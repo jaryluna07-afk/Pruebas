@@ -147,6 +147,7 @@ def reenviar_pin(request):
 
 def cambiar_correo_registro(request):
     """Permite al usuario cambiar el correo antes de verificar."""
+    error = ""
     if request.method == "POST":
         email_viejo = request.POST.get("email_viejo", "").strip()
         email_nuevo = request.POST.get("email_nuevo", "").strip()
