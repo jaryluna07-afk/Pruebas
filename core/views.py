@@ -17,15 +17,16 @@ from django.db.models.functions import TruncMonth
 from .models import Contacto, TipoContacto, TipoIdentificacion, Interaccion, TipoInteraccion, Usuario, Rol, FirmaDigital, MensajeWhatsApp
 
 def enviar_correo_seguro(asunto, texto_plano, destinatarios):
-    import json, urllib.request
+    import json, urllib.request, urllib.error
     api_key = getattr(settings, 'BREVO_API_KEY', '')
     if not api_key:
-        print(f"[EMAIL] No BREVO_API_KEY configurada")
-        return
+        return "No hay BREVO_API_KEY configurada en las variables de entorno de Render"
     try:
+        from_email = settings.DEFAULT_FROM_EMAIL
+        if not from_email:
+            return "No hay DEFAULT_FROM_EMAIL configurado en las variables de entorno de Render. En Brevo ve a Centro de Ventas → Remitentes y verifica un correo."
         html_body = texto_plano.replace('\n', '<br>')
         html_content = f"""<html><body style="font-family:Segoe UI,Tahoma,sans-serif;color:#333;background:#F4F7FE;padding:20px"><div style="max-width:600px;margin:0 auto;background:#fff;padding:30px;border-radius:12px"><h1 style="color:#D32F2F;margin:0;font-size:24px">Constructora Dyco</h1><p style="color:#A3AED0;font-size:14px">Gesti&oacute;n y CRM</p><hr style="border:none;border-top:1px solid #E9EDF7;margin:20px 0"><div style="font-size:15px;color:#1B2559">{html_body}</div></div></body></html>"""
-        from_email = settings.DEFAULT_FROM_EMAIL or 'onboarding@resend.dev'
         payload = json.dumps({
             "sender": {"name": "Constructora Dyco", "email": from_email},
             "to": [{"email": d} for d in destinatarios],
@@ -43,8 +44,14 @@ def enviar_correo_seguro(asunto, texto_plano, destinatarios):
         )
         with urllib.request.urlopen(req, timeout=10) as resp:
             print(f"[BREVO] Email enviado: {resp.read().decode()}")
+            return None
+    except urllib.error.HTTPError as e:
+        body = e.read().decode()
+        print(f"[BREVO ERROR {e.code}] {body}")
+        return f"Brevo rechazó el email (código {e.code}): {body}"
     except Exception as e:
         print(f"[BREVO ERROR] {e}")
+        return f"Error al enviar correo: {e}"
 
 def registro_view(request):
     error = ""
@@ -68,7 +75,7 @@ def registro_view(request):
                 pin = str(random.randint(100000, 999999))
                 usuario_sin_verificar.token_verificacion = pin
                 usuario_sin_verificar.save()
-                enviar_correo_seguro(
+                email_err = enviar_correo_seguro(
                     'Verifica tu cuenta (reenvío) - CRM',
                     f'Hola {usuario_sin_verificar.nombre_usuario},\n\nTu nuevo código de verificación es: {pin}\n\nIntroduce este código en la web para activar tu cuenta.',
                     [usuario_sin_verificar.email]
@@ -76,6 +83,7 @@ def registro_view(request):
                 print(f"\n[SOPORTE] Código de verificación (reenvío) para {usuario_sin_verificar.nombre_usuario}: {pin}\n")
                 return render(request, "registro.html", {
                     "success": "Te hemos reenviado un nuevo código de verificación. Revisa tu correo.",
+                    "error": email_err or "",
                     "roles": roles,
                     "show_pin": True,
                     "email_reg": email
@@ -95,7 +103,7 @@ def registro_view(request):
                     activo=False,
                     token_verificacion=pin
                 )
-                enviar_correo_seguro(
+                email_err = enviar_correo_seguro(
                     'Bienvenido al CRM - Código de Verificación',
                     f'Hola {nombre},\n\nTu código para activar tu cuenta es: {pin}\n\nIntroduce este código en la web para terminar tu registro.',
                     [email]
@@ -103,6 +111,7 @@ def registro_view(request):
                 print(f"\n[SOPORTE] Código de verificación para {nombre}: {pin}\n")
                 return render(request, "registro.html", {
                     "success": "Registro exitoso. Introduce el código de 6 dígitos que enviamos a tu correo para activar tu cuenta.",
+                    "error": email_err or "",
                     "roles": roles,
                     "show_pin": True,
                     "email_reg": email
