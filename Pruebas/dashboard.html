@@ -321,9 +321,24 @@
                 </select>
             </div>
             <div class="recent-list" style="display:flex; flex-direction:column; gap:12px; margin-top:10px; max-height:260px; overflow-y:auto; padding-right:5px;" id="recentListContainer">
+                {% if recientes %}
+                {% for r in recientes %}
+                <div class="recent-item" style="display:flex; align-items:center; gap:12px; padding:8px 10px; background:#f4f7fe; border-radius:12px; transition:.3s;">
+                    <div style="width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:{% if r.estado == 'Exitosa' %}rgba(1,181,116,.15){% elif r.estado == 'No Lograda' %}rgba(211,47,47,.12){% else %}rgba(255,183,3,.15){% endif %}">
+                        <span style="font-size:16px;">{% if r.tipo_interaccion.nombre_tipo == 'Llamada' %}&#128222;{% elif r.tipo_interaccion.nombre_tipo == 'Correo' %}&#9993;{% elif r.tipo_interaccion.nombre_tipo == 'Reunión' %}&#128197;{% elif r.tipo_interaccion.nombre_tipo == 'Nota' %}&#128221;{% else %}&#128260;{% endif %}</span>
+                    </div>
+                    <div style="flex:1;min-width:0;">
+                        <div style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ r.contacto.primer_nombre }} {{ r.contacto.primer_apellido }} — {{ r.tipo_interaccion.nombre_tipo }}</div>
+                        <div style="font-size:11px;font-weight:600;color:var(--txt2);margin-top:2px;">{{ r.fecha_interaccion|date:"d/m/Y" }} · {{ r.hora_interaccion|time:"H:i" }}</div>
+                    </div>
+                    <span style="font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;background:{% if r.estado == 'Exitosa' %}rgba(1,181,116,.15);color:#01B574{% elif r.estado == 'No Lograda' %}rgba(211,47,47,.12);color:#D32F2F{% else %}rgba(255,183,3,.15);color:#FFB703{% endif %}">{{ r.estado }}</span>
+                </div>
+                {% endfor %}
+                {% else %}
                 <div style="text-align:center; padding:20px; color:var(--txt2); font-size:13px; font-weight:600;">
                     No hay interacciones recientes registradas.
                 </div>
+                {% endif %}
             </div>
         </div>
 
@@ -491,19 +506,24 @@ const C = {
 // ════════════════════════════════════════════
 const D = {
     interResult : { exitosas: 0, enProceso: 0, noLogradas: 0 },
-    interTipo   : { correos: 0, llamadas: 0, reuniones: 0, notas: 0 },
-    contactosTipo: { naturales: 0, juridicas: 0 },
-    usuarios    : { activos: 0, inactivos: 0 },
+    interTipo   : (function() {
+        const m = { correos: 0, llamadas: 0, reuniones: 0, notas: 0, otros: 0 };
+        {% for s in stats_interacciones %}
+        {% with k=s.tipo_interaccion__nombre_tipo|lower %}
+        {% if 'correo' in k %}m.correos = {{ s.total }};
+        {% elif 'llamada' in k %}m.llamadas = {{ s.total }};
+        {% elif 'reunion' in k %}m.reuniones = {{ s.total }};
+        {% elif 'nota' in k %}m.notas = {{ s.total }};
+        {% else %}m.otros += {{ s.total }};
+        {% endif %}{% endwith %}{% endfor %}
+        return m;
+    })(),
+    contactosTipo: { naturales: {{ natural_count }}, juridicas: {{ juridica_count }} },
+    usuarios    : { activos: {{ usuarios_activos }}, inactivos: {{ usuarios_inactivos }} },
     temporal    : {
         anual   : {
-            labels: (function(){
-                const months=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
-                return months.slice(0, new Date().getMonth()+1);
-            })(),
-            data: (function(){
-                const n = new Date().getMonth()+1;
-                return Array(n).fill(0);
-            })()
+            labels: [{% for l in tendencia_labels %}'{{ l }}'{% if not forloop.last %},{% endif %}{% endfor %}],
+            data: [{% for c in tendencia_counts %}{{ c }}{% if not forloop.last %},{% endif %}{% endfor %}]
         },
         mensual : (function(){
             const labels=[]; const data=[];
@@ -571,12 +591,21 @@ window.filterChart = function(selectEl, chartId) {
 
 // ── 1. Donuts ────────────────────────
 function initDonuts() {
+    const interData = Object.values(D.interTipo);
+    const interTotal = interData.reduce((a, b) => a + b, 0);
+    const ct = D.contactosTipo;
+    const ctTotal = ct.naturales + ct.juridicas;
+    const u = D.usuarios;
+    const uTotal = u.activos + u.inactivos;
+
+    document.querySelector('#chartInterTipo').parentElement.querySelector('.donut-val').textContent = interTotal;
+
     new Chart(document.getElementById('chartInterTipo'), {
         type: 'doughnut',
         data: {
             labels: ['Correos','Llamadas','Reuniones','Notas','Otros'],
             datasets: [{
-                data: [0, 0, 0, 0, 0],
+                data: interData,
                 backgroundColor: [C.pri, C.amber, C.blue, C.cyan, C.green],
                 borderWidth: 0,
                 hoverOffset: 10
@@ -585,12 +614,23 @@ function initDonuts() {
         options: donutOpts()
     });
 
+    const interLegRows = document.querySelector('#chartInterTipo').closest('.card').querySelectorAll('.leg-row');
+    const interLabels = ['Correos','Llamadas','Reuniones','Notas','Otros'];
+    const interKeys = ['correos','llamadas','reuniones','notas','otros'];
+    interLegRows.forEach((row, i) => {
+        const v = D.interTipo[interKeys[i]] || 0;
+        const pct = interTotal ? Math.round(v / interTotal * 100) : 0;
+        row.querySelector('.leg-right').innerHTML = `${v}<span class="leg-pct">(${pct}%)</span>`;
+    });
+
+    document.querySelector('#chartContactosTipo').parentElement.querySelector('.donut-val').textContent = ctTotal;
+
     new Chart(document.getElementById('chartContactosTipo'), {
         type: 'doughnut',
         data: {
             labels: ['Personas Naturales','Personas Jurídicas'],
             datasets: [{
-                data: [0, 0],
+                data: [ct.naturales, ct.juridicas],
                 backgroundColor: [C.blue, C.cyan],
                 borderWidth: 0,
                 hoverOffset: 10
@@ -599,18 +639,34 @@ function initDonuts() {
         options: donutOpts()
     });
 
+    const ctLegRows = document.querySelector('#chartContactosTipo').closest('.card').querySelectorAll('.leg-row');
+    const ctVals = [ct.naturales, ct.juridicas];
+    ctLegRows.forEach((row, i) => {
+        const pct = ctTotal ? Math.round(ctVals[i] / ctTotal * 100) : 0;
+        row.querySelector('.leg-right').innerHTML = `${ctVals[i]}<span class="leg-pct">(${pct}%)</span>`;
+    });
+
+    document.querySelector('#chartUsuarios').parentElement.querySelector('.donut-val').textContent = uTotal;
+
     new Chart(document.getElementById('chartUsuarios'), {
         type: 'doughnut',
         data: {
             labels: ['Activos','Inactivos'],
             datasets: [{
-                data: [0, 0],
+                data: [u.activos, u.inactivos],
                 backgroundColor: [C.green, C.gray],
                 borderWidth: 0,
                 hoverOffset: 10
             }]
         },
         options: donutOpts()
+    });
+
+    const uLegRows = document.querySelector('#chartUsuarios').closest('.card').querySelectorAll('.leg-row');
+    const uVals = [u.activos, u.inactivos];
+    uLegRows.forEach((row, i) => {
+        const pct = uTotal ? Math.round(uVals[i] / uTotal * 100) : 0;
+        row.querySelector('.leg-right').innerHTML = `${uVals[i]}<span class="leg-pct">(${pct}%)</span>`;
     });
 }
 
@@ -661,8 +717,8 @@ window.updateMesVsMes = function() {
 // ── 2. Actividad por Categoría (Bar) ─────────
 function initActividadCategoria() {
     const ctx  = document.getElementById('chartActividadCategoria').getContext('2d');
-    const labels = ['Llamadas', 'Correos', 'Reuniones', 'Notas', 'Otros'];
-    const data = [0, 0, 0, 0, 0];
+    const labels = [{% for l in acciones_labels %}'{{ l }}'{% if not forloop.last %},{% endif %}{% endfor %}];
+    const data = [{% for c in acciones_counts %}{{ c }}{% if not forloop.last %},{% endif %}{% endfor %}];
     const bars = data.map(() => 'rgba(67,24,255,.72)');
     const bHov = data.map(() => 'rgba(67,24,255,.9)');
 

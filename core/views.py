@@ -70,13 +70,16 @@ def registro_view(request):
                     enviar_correo_seguro(
                         'Verifica tu cuenta (reenvío) - CRM',
                         f'Hola {usuario_sin_verificar.nombre_usuario},\n\nTu nuevo código de verificación es: {pin}\n\nIntroduce este código en la web para activar tu cuenta.',
-                        [email]
+                        [usuario_sin_verificar.correo_electronico]
                     )
                     print(f"\n[SOPORTE] Código de verificación (reenvío) para {usuario_sin_verificar.nombre_usuario}: {pin}\n")
-                except: pass
+                except Exception as e:
+                    print(f"[EMAIL ERROR] {e}")
+                    error = f"No se pudo enviar el correo: {e}"
 
                 return render(request, "registro.html", {
-                    "success": "Te hemos reenviado un nuevo código de verificación. Revisa tu correo o la consola.", 
+                    "success": "Te hemos reenviado un nuevo código de verificación. Revisa tu correo o la consola.",
+                    "error": error,
                     "roles": Rol.objects.all(),
                     "show_pin": True,
                     "email_reg": email
@@ -107,10 +110,13 @@ def registro_view(request):
                         [email]
                     )
                     print(f"\n[SOPORTE] Código de verificación para {nombre}: {pin}\n")
-                except: pass
+                except Exception as e:
+                    print(f"[EMAIL ERROR] {e}")
+                    error = f"No se pudo enviar el correo: {e}"
                 
                 return render(request, "registro.html", {
-                    "success": "Registro exitoso. Introduce el código de 6 dígitos que enviamos a tu correo para activar tu cuenta.", 
+                    "success": "Registro exitoso. Introduce el código de 6 dígitos que enviamos a tu correo para activar tu cuenta.",
+                    "error": error,
                     "roles": Rol.objects.all(),
                     "show_pin": True,
                     "email_reg": email
@@ -160,12 +166,15 @@ def reenviar_pin(request):
                 enviar_correo_seguro(
                     'Nuevo código de verificación - Constructora Dyco',
                     f'Hola {u.nombre_usuario},\n\nTu nuevo código de verificación es: {pin}\n\nEste código expirará en 5 minutos.',
-                    [email]
+                    [u.correo_electronico]
                 )
                 print(f"\n[SOPORTE] Nuevo PIN reenviado para {u.nombre_usuario}: {pin}\n")
-            except: pass
+            except Exception as e:
+                print(f"[EMAIL ERROR] {e}")
+                error = f"No se pudo enviar el correo: {e}"
             return render(request, "registro.html", {
                 "success": "Se ha reenviado un nuevo código a tu correo.",
+                "error": error,
                 "roles": Rol.objects.all(),
                 "show_pin": True,
                 "email_reg": email
@@ -211,9 +220,12 @@ def cambiar_correo_registro(request):
                 [email_nuevo]
             )
             print(f"\n[SOPORTE] PIN enviado al nuevo correo {email_nuevo} para {u.nombre_usuario}: {pin}\n")
-        except: pass
+        except Exception as e:
+            print(f"[EMAIL ERROR] {e}")
+            error = f"No se pudo enviar el correo: {e}"
         return render(request, "registro.html", {
             "success": f"Correo actualizado. Hemos enviado un nuevo código a {email_nuevo}.",
+            "error": error,
             "roles": Rol.objects.all(),
             "show_pin": True,
             "email_reg": email_nuevo
@@ -388,14 +400,26 @@ def dashboard(request):
     natural_perc = (natural_count / total_contactos * 100) if total_contactos > 0 else 0
     juridica_perc = 100 - natural_perc if total_contactos > 0 else 0
     
-    # 2. Diagrama de barras (Llamadas, Correos, Reuniones)
+    # 2. Diagrama de barras (Llamadas, Correos, Reuniones, Notas, Otros)
     stats_acciones = Interaccion.objects.values('tipo_interaccion__nombre_tipo')\
-        .filter(tipo_interaccion__nombre_tipo__in=['Llamada', 'Correo', 'Reunión'])\
         .annotate(total=Count('id'))
     
-    # Preparar listas para Chart.js
-    acciones_labels = [s['tipo_interaccion__nombre_tipo'] for s in stats_acciones]
-    acciones_counts = [s['total'] for s in stats_acciones]
+    # Mapear a 5 categorías fijas
+    tipo_map = {'Llamada': 0, 'Correo': 0, 'Reunión': 0, 'Nota': 0}
+    otros_acciones = 0
+    for s in stats_acciones:
+        name = s['tipo_interaccion__nombre_tipo']
+        count = s['total']
+        if name in tipo_map:
+            tipo_map[name] = count
+        else:
+            otros_acciones += count
+    
+    acciones_labels = list(tipo_map.keys())
+    acciones_counts = list(tipo_map.values())
+    if otros_acciones > 0:
+        acciones_labels.append('Otros')
+        acciones_counts.append(otros_acciones)
     
     # 3. Diagrama lineal (Interacciones por mes)
     import locale
