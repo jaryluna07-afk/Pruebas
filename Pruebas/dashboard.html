@@ -457,7 +457,7 @@
                 flex-shrink: 0;
             }
             .hamburger-btn svg {
-                stroke: var(--primario);
+                stroke: #a82e2e;
             }
             
             .sidebar-overlay {
@@ -514,14 +514,91 @@
                 opacity: 1 !important;
             }
         }
-    
-</style>
+
+        /* ── MODO OSCURO (Dark Mode) Manual/Automático ── */
+        [data-theme="dark"] {
+            --bg: #0f172a;
+            --txt: #f8fafc;
+            --txt2: #cbd5e1;
+            --white: #1e293b;
+            --shadow: 0 4px 20px rgba(0,0,0,0.4);
+            --gris-borde: #334155;
+        }
+        [data-theme="dark"] body { background: var(--bg); color: var(--txt); }
+        
+        /* Tarjetas y Contenedores */
+        [data-theme="dark"] .kpi-card, 
+        [data-theme="dark"] .chart-card, 
+        [data-theme="dark"] .card, 
+        [data-theme="dark"] .top-item {
+            background: #1e293b !important;
+            border-color: #334155 !important;
+            color: #f8fafc !important;
+        }
+        [data-theme="dark"] .kpi-val, 
+        [data-theme="dark"] .pie-center-val, 
+        [data-theme="dark"] .cmp-val, 
+        [data-theme="dark"] .leg-right, 
+        [data-theme="dark"] .cleg-right, 
+        [data-theme="dark"] .item-name {
+            color: #f8fafc !important;
+        }
+        [data-theme="dark"] .kpi-label, 
+        [data-theme="dark"] .pie-center-text, 
+        [data-theme="dark"] .cmp-vlbl, 
+        [data-theme="dark"] .leg-left, 
+        [data-theme="dark"] .cleg-left, 
+        [data-theme="dark"] .item-count {
+            color: #cbd5e1 !important;
+        }
+        
+        /* Botones y Selectores */
+        [data-theme="dark"] .fbtn, 
+        [data-theme="dark"] .chart-filter, 
+        [data-theme="dark"] .date-inp, 
+        [data-theme="dark"] .cmp-sel, 
+        [data-theme="dark"] .hamburger-btn {
+            background: #0f172a !important;
+            border-color: #334155 !important;
+            color: #e2e8f0 !important;
+        }
+        [data-theme="dark"] .fbtn.active {
+            background: rgba(211,47,47,.15) !important;
+            color: #ef4444 !important;
+            border-color: #ef4444 !important;
+        }
+        
+        /* Elementos internos */
+        [data-theme="dark"] .item-avatar { background: #334155 !important; border-color: #475569 !important; color: #f8fafc !important; }
+        [data-theme="dark"] .recent-item { background: #334155 !important; }
+        [data-theme="dark"] .bar-bg { background: #334155 !important; }
+        [data-theme="dark"] .leg-row, 
+        [data-theme="dark"] .cleg-row { border-bottom-color: #334155 !important; }
+        [data-theme="dark"] .section-label::after { background: #334155 !important; }
+        [data-theme="dark"] .vs-line { background: linear-gradient(to bottom, #334155, transparent) !important; }
+        
+        /* Header */
+        [data-theme="dark"] .btn-banner { background: #0f172a !important; color: white !important; border: 1px solid #334155 !important; }
+
+        [data-theme="dark"] .hamburger-btn svg {
+            stroke: #f8fafc !important;
+        }
+    </style>
+    <script>
+        const savedTheme = localStorage.getItem('temaApp') || 'Modo Sistema';
+        if (savedTheme === 'Modo Oscuro' || (savedTheme === 'Modo Sistema' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.setAttribute('data-theme', 'dark');
+        }
+    </script>
 </head>
 <body>
 
-<!-- SIDEBAR -->
+    <!-- OVERLAY MÓVIL -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- SIDEBAR -->
     <!-- BARRA LATERAL -->
-    <aside class="barra-lateral">
+    <aside class="barra-lateral" id="barraLateral">
         <div class="barra-cabecera">
             <img src="{% static 'img/logo_dyco.png' %}" alt="Logo DYCO" style="width: 48px; height: 48px; object-fit: contain; border-radius: 12px; background: white; padding: 4px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
             <div class="logo-texto">CONSTRUCTORA</div>
@@ -571,7 +648,7 @@
 
             <!-- Contenido Izquierdo (DYCO) -->
             <div style="position: relative; z-index: 1; display: flex; align-items: center; gap: 15px;">
-                <button id="hamburger-btn" class="hamburger-btn" style="display: none; color: white;">
+                <button id="hamburger-btn" class="hamburger-btn" style="display: none;">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                         <line x1="3" y1="12" x2="21" y2="12"></line>
                         <line x1="3" y1="6" x2="21" y2="6"></line>
@@ -583,7 +660,7 @@
 
             <!-- Contenido Derecho (Bot├│n Registrar) -->
             <div style="position: relative; z-index: 1; display: flex; align-items: center; gap: 15px;">
-                <a href="{% url 'contactos' %}" class="btn-banner" style="background: white; color: var(--rojo-primario); padding: 12px 24px; font-size: 14px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">Registrar Contacto</a>
+                <a href="{% url 'contactos' %}" class="btn-banner" style="background: white; color: #a82e2e; padding: 8px 16px; font-size: 13px; font-weight: 800; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">Registrar Contacto</a>
             </div>
             
             <script>
@@ -793,7 +870,7 @@
         </div>
 
         <!-- Tendencia de Interacciones (Line) - WIDE -->
-        <div class="card col2">
+        <div class="card col2" style="background-image: none !important;">
             <div class="card-head">
                 <div>
                     <div class="card-title">Tendencia de Interacciones</div>
@@ -1034,7 +1111,7 @@ function initDonuts() {
             labels: ['Correos','Llamadas','Reuniones','Notas','Otros'],
             datasets: [{
                 data: interData,
-                backgroundColor: ['#a82e2e', '#1a2232', '#64748b', '#e11d48', '#334155'],
+                backgroundColor: ['#D32F2F', '#e11d48', '#4318FF', '#00C6E0', '#01B574'],
                 borderWidth: 0,
                 hoverOffset: 10
             }]
@@ -1275,6 +1352,29 @@ function onDashSliderChange(val) {
     const f = windowLabels[0] || '', l = windowLabels[windowLabels.length-1] || '';
     document.getElementById('temporalSub').textContent = `Vista diaria · ${f} - ${l}`;
 }
+
+// ── 4. Lógica del Menú Móvil (Hamburger) ─────────
+document.addEventListener('DOMContentLoaded', function() {
+    const hamburgerBtn = document.getElementById('hamburger-btn');
+    const barraLateral = document.getElementById('barraLateral');
+    const sidebarOverlay = document.getElementById('sidebarOverlay');
+
+    if(hamburgerBtn && barraLateral && sidebarOverlay) {
+        // Abrir menú
+        hamburgerBtn.addEventListener('click', function() {
+            barraLateral.classList.add('activo');
+            sidebarOverlay.classList.add('activo');
+            document.body.style.overflow = 'hidden'; // Prevenir scroll de la página de fondo
+        });
+
+        // Cerrar menú al hacer clic en el fondo oscuro (overlay)
+        sidebarOverlay.addEventListener('click', function() {
+            barraLateral.classList.remove('activo');
+            sidebarOverlay.classList.remove('activo');
+            document.body.style.overflow = ''; // Restaurar scroll
+        });
+    }
+});
 </script>
 </body>
 </html>

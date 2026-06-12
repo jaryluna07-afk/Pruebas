@@ -2172,6 +2172,13 @@
         }
 
         @media (max-width: 768px) {
+            /* Asegurar que body y html permitan scroll en móvil */
+            body, html {
+                height: auto !important;
+                overflow-y: auto !important;
+                overflow-x: hidden !important;
+            }
+            
             .barra-lateral {
                 width: 280px !important;
                 position: fixed !important;
@@ -2184,6 +2191,7 @@
                 left: 0 !important;
                 box-shadow: 15px 0 50px rgba(0,0,0,0.15) !important;
             }
+            .barra-lateral.activo .logo-texto, .barra-lateral.activo .nav-text { display: block !important; opacity: 1 !important; }
             .barra-lateral:hover {
                 width: 280px !important;
             }
@@ -2211,17 +2219,25 @@
                 gap: 16px !important;
                 overflow-y: auto !important;
                 height: auto !important;
+                min-height: 100vh !important;
             }
             
             .panel-izquierdo {
                 width: 100% !important;
                 max-height: none !important;
+                overflow: visible !important;
                 box-sizing: border-box !important;
+                flex-shrink: 0 !important;
             }
             
             .panel-derecho {
                 width: 100% !important;
                 box-sizing: border-box !important;
+                flex-shrink: 0 !important;
+                overflow: visible !important;
+                min-height: 600px !important;
+                display: flex !important;
+                flex-direction: column !important;
             }
             
             .mobile-header {
@@ -2304,6 +2320,77 @@
             .tab-top {
                 padding: 14px 4px !important;
                 flex-shrink: 0 !important;
+            }
+            
+            /* Panel de datos extra flotante en móvil - Restaurado como botón/modal */
+            #main-tabs-wrapper {
+                flex-direction: column !important;
+                height: auto !important;
+                overflow: visible !important;
+                flex: 1 !important;
+                min-height: 500px !important;
+            }
+            #tabs-content-area {
+                overflow: visible !important;
+                flex: 1 !important;
+                height: auto !important;
+                display: flex !important;
+                flex-direction: column !important;
+            }
+            #panel-datos-adicionales {
+                position: fixed !important;
+                top: 0 !important;
+                right: 0 !important;
+                width: 100% !important;
+                height: 100vh !important;
+                z-index: 9999 !important;
+                box-shadow: -5px 0 25px rgba(0,0,0,0.15) !important;
+                border-left: none !important;
+            }
+            /* El botón se mostrará normalmente, no lo ocultamos */
+            
+            /* Evitar que el contenido de las pestañas se colapse a 0px de altura en móvil */
+            .tab-content-container {
+                flex: none !important;
+                height: auto !important;
+                overflow: visible !important;
+                min-height: 500px !important;
+                display: none;
+            }
+            .tab-content-container.active {
+                display: block !important;
+            }
+            .timeline-scroll,
+            #timeline-scroll {
+                height: auto !important;
+                overflow: visible !important;
+                min-height: 400px !important;
+                padding: 16px !important;
+            }
+            #whatsapp-chat-body {
+                height: auto !important;
+                overflow: visible !important;
+                min-height: 400px !important;
+            }
+            .desc-section {
+                padding: 16px !important;
+                height: auto !important;
+                overflow: visible !important;
+            }
+            
+            /* Forzar visibilidad del menú de sub-pestañas (Actividad, Tareas, Notas, etc) */
+            .tabs-sub-nav {
+                display: flex !important;
+                overflow-x: auto !important;
+                overflow-y: hidden !important;
+                flex-wrap: nowrap !important;
+                padding: 5px 16px !important;
+                width: 100% !important;
+                box-sizing: border-box !important;
+                -webkit-overflow-scrolling: touch !important;
+            }
+            .tabs-sub-nav::-webkit-scrollbar {
+                display: none;
             }
         }
 
@@ -2609,8 +2696,120 @@
             background: #fcfcfc !important;
             padding: 24px !important;
         }
+        /* ── MODO OSCURO (Dark Mode) Manual/Automático ── */
+        [data-theme="dark"] {
+            --bg-principal: #0f172a;
+            --texto: #f8fafc;
+            --texto-secundario: #cbd5e1;
+            --blanco: #1e293b;
+            --sombra: 0 4px 20px rgba(0,0,0,0.4);
+            --gris-borde: #334155;
+            --gris-fondo: #0f172a;
+            --texto-principal: #f8fafc;
+            --texto-suave: #94a3b8;
+        }
+        [data-theme="dark"] body { background: var(--bg-principal) !important; color: var(--texto-principal) !important; }
+        [data-theme="dark"] .main-wrapper { background: #0f172a !important; }
+        [data-theme="dark"] .panel-izquierdo,
+        [data-theme="dark"] .panel-derecho,
+        [data-theme="dark"] .card-info-box,
+        [data-theme="dark"] .tm-card,
+        [data-theme="dark"] .nota-card,
+        [data-theme="dark"] .interaccion-form-box,
+        [data-theme="dark"] .tabs-header-top,
+        [data-theme="dark"] .tabs-sub-nav,
+        [data-theme="dark"] #panel-datos-adicionales {
+            background-color: #1e293b !important;
+            border-color: #334155 !important;
+        }
+        [data-theme="dark"] #panel-datos-adicionales > div:first-child {
+            background-color: #1e293b !important;
+        }
+        [data-theme="dark"] #panel-datos-adicionales h2,
+        [data-theme="dark"] #panel-datos-adicionales h3,
+        [data-theme="dark"] #panel-datos-adicionales div {
+            color: #f8fafc !important;
+        }
+        [data-theme="dark"] #panel-datos-adicionales .card-info-box,
+        [data-theme="dark"] #panel-datos-adicionales > div:last-child > div {
+            background-color: #1e293b !important;
+            border-color: #334155 !important;
+        }
+        [data-theme="dark"] #btn-toggle-datos {
+            background-color: #0f172a !important;
+            border-color: #334155 !important;
+            color: #f8fafc !important;
+        }
+        [data-theme="dark"] .timeline-scroll,
+        [data-theme="dark"] #timeline-scroll {
+            background-color: #0f172a !important;
+        }
+        [data-theme="dark"] .grid-notas-container {
+            background-color: #0f172a !important;
+            background-image: none !important;
+        }
+        [data-theme="dark"] .nota-card::before,
+        [data-theme="dark"] .nota-card::after {
+            background-color: #1e293b !important;
+            border-color: #334155 !important;
+        }
+        [data-theme="dark"] .nota-card-title,
+        [data-theme="dark"] .nota-card-text,
+        [data-theme="dark"] .tm-type-user,
+        [data-theme="dark"] .tm-body,
+        [data-theme="dark"] .basic-info-val,
+        [data-theme="dark"] .perfil-info-text h2,
+        [data-theme="dark"] .desc-value,
+        [data-theme="dark"] .user-assigned-name,
+        [data-theme="dark"] .grid-notas-container h2 {
+            color: #f8fafc !important;
+        }
+        [data-theme="dark"] .btn-accion-circular .ico-circ {
+            background: #0f172a !important;
+            border-color: #334155 !important;
+            color: #f8fafc !important;
+        }
+        [data-theme="dark"] .interaccion-form-box select,
+        [data-theme="dark"] .interaccion-form-box textarea,
+        [data-theme="dark"] .interaccion-form-box input {
+            background-color: #0f172a !important;
+            border-color: #334155 !important;
+            color: #f8fafc !important;
+        }
+        [data-theme="dark"] .modal-card {
+            background-color: #1e293b !important;
+            color: #f8fafc !important;
+        }
+        [data-theme="dark"] .modal-card h2,
+        [data-theme="dark"] .modal-card label,
+        [data-theme="dark"] .modal-card p { color: #f8fafc !important; }
+        [data-theme="dark"] .modal-card input,
+        [data-theme="dark"] .modal-card select,
+        [data-theme="dark"] .modal-card textarea {
+            background-color: #0f172a !important;
+            border-color: #334155 !important;
+            color: #f8fafc !important;
+        }
+        [data-theme="dark"] .hamburger-btn svg { stroke: #f8fafc !important; }
+        [data-theme="dark"] .hamburger-btn {
+            background: #0f172a !important;
+            border-color: #334155 !important;
+        }
+        [data-theme="dark"] .btn-banner {
+            background: #0f172a !important;
+            color: white !important;
+            border: 1px solid #334155 !important;
+        }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        (function() {
+            const t = localStorage.getItem('temaApp') || 'Modo Sistema';
+            if (t === 'Modo Oscuro' || (t === 'Modo Sistema' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            }
+        })();
+    </script>
 </head>
 
 <body>
