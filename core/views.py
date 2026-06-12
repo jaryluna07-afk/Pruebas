@@ -52,7 +52,8 @@ def enviar_correo_seguro(asunto, texto_plano, destinatarios, html_content=None, 
             data=payload,
             headers={
                 "api-key": api_key,
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
             },
             method='POST'
         )
@@ -2493,6 +2494,7 @@ def _enviar_ultramsg(phone, message):
         url = f"https://api.ultramsg.com/{instance_id}/messages/chat?token={token}"
         req = urllib.request.Request(url, data=data, method='POST')
         req.add_header('Content-Type', 'application/json')
+        req.add_header('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36')
         with urllib.request.urlopen(req, timeout=10) as resp:
             body = json.loads(resp.read().decode())
             if body.get("sent"):
