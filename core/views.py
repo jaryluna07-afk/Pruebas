@@ -2504,13 +2504,14 @@ def enviar_mensaje_whatsapp(request, id_contacto):
         
         success = False
         whatsapp_id = None
+        error_msg = None
         
         token = getattr(settings, 'WHATSAPP_ACCESS_TOKEN', '')
         phone_id = getattr(settings, 'WHATSAPP_PHONE_NUMBER_ID', '')
         
         _log_whatsapp_debug(f"Credentials status: token_exists={bool(token)}, phone_id='{phone_id}'")
         
-        if token and token != 'EAAG_PLACEHOLDER' and phone_id and phone_id != 'PHONE_ID_PLACEHOLDER':
+        if token and phone_id:
             url = f"https://graph.facebook.com/v18.0/{phone_id}/messages"
             headers = {
                 "Authorization": f"Bearer {token}",
@@ -2538,51 +2539,30 @@ def enviar_mensaje_whatsapp(request, id_contacto):
                         res_data = json.loads(res_body)
                         whatsapp_id = res_data.get('messages', [{}])[0].get('id')
                         success = True
-                    else:
-                        print(f"WhatsApp Cloud API Error: {res_body}")
             except urllib.error.HTTPError as e:
                 res_body = e.read().decode('utf-8') if e.fp else str(e)
-                _log_whatsapp_debug(f"Meta API HTTP Error: code={e.code}, body={res_body}")
-                print(f"WhatsApp Cloud API Error: {res_body}")
+                error_msg = f"Meta API error {e.code}: {res_body}"
+                _log_whatsapp_debug(error_msg)
             except Exception as e:
-                _log_whatsapp_debug(f"Meta API request exception: {str(e)}")
-                print(f"WhatsApp Request Exception: {e}")
+                error_msg = f"Error de conexión: {e}"
+                _log_whatsapp_debug(error_msg)
         else:
-            _log_whatsapp_debug("Skipping Meta request: credentials not set or placeholder.")
-                
-        if not success:
-            whatsapp_id = f"mock-{uuid.uuid4()}"
-            _log_whatsapp_debug(f"Falling back to mock reply: generated mock id='{whatsapp_id}'")
+            error_msg = "WHATSAPP_ACCESS_TOKEN o WHATSAPP_PHONE_NUMBER_ID no están configurados en Render"
+            _log_whatsapp_debug(error_msg)
             
         MensajeWhatsApp.objects.create(
             contacto=contacto,
             remitente_usuario=usuario_logueado,
             texto=texto,
             direccion='Saliente',
-            whatsapp_id=whatsapp_id,
+            whatsapp_id=whatsapp_id or f"mock-{uuid.uuid4()}",
             estado='enviado'
         )
         
-        if not success:
-            mock_replies = [
-                f"Hola {usuario_logueado.nombre_usuario}, entiendo perfectamente. Vamos a revisarlo en la Constructora DYCO.",
-                "Recibido. Me parece una excelente propuesta de proyecto.",
-                "Gracias por la información. ¿Cuándo podríamos programar una visita?",
-                "Vale, estaré pendiente de tu llamada."
-            ]
-            import random
-            reply_text = random.choice(mock_replies)
-            
-            MensajeWhatsApp.objects.create(
-                contacto=contacto,
-                texto=reply_text,
-                direccion='Entrante',
-                whatsapp_id=f"mock-reply-{uuid.uuid4()}",
-                estado='leido'
-            )
-            
-        return JsonResponse({'status': 'success', 'whatsapp_id': whatsapp_id})
-        
+        if success:
+            return JsonResponse({'status': 'success', 'message': 'Mensaje enviado correctamente'})
+        else:
+            return JsonResponse({'status': 'warning', 'message': f'Mensaje guardado, pero no enviado a WhatsApp: {error_msg}', 'mock': True})
     return JsonResponse({'status': 'error', 'message': 'Método no permitido'}, status=405)
 
 def obtener_mensajes_whatsapp(request, id_contacto):

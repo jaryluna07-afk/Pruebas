@@ -157,11 +157,14 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 # config/settings.py
 
-WHATSAPP_ACCESS_TOKEN = os.getenv('WHATSAPP_ACCESS_TOKEN', 'EAATYRc2AudIBRjejG7BwmZBFlT2AHXz1NhcHZCdoZC2XNsX8oGvh6pYCEdPyiV9bhkaUVSPPnnh9f0tm7xFgDEyKahQc0aX1P7HvJ6xCJ5fZCd8PCFwo6WRUZAKttbgZCRX1oj7nUyb2DKCMTwVcOUUZAkqmg4oLZALhVFnqbg8a27nINHX3cHnKnjjkSjDJP1bgNcD69lu4JIF9SYFIGcqNFyWzYpGytHO6Uo39xsjiM7A8bl8mNYTgC1HddDThZBoTE8plZA5FlRKcMohHAKslRD2W081wZDZD')
-WHATSAPP_PHONE_NUMBER_ID = os.getenv('WHATSAPP_PHONE_NUMBER_ID', '1172312952629800')
+WHATSAPP_ACCESS_TOKEN = os.getenv('WHATSAPP_ACCESS_TOKEN', '')
+WHATSAPP_PHONE_NUMBER_ID = os.getenv('WHATSAPP_PHONE_NUMBER_ID', '')
 WHATSAPP_VERIFY_TOKEN = os.getenv('WHATSAPP_VERIFY_TOKEN', 'pato_123')
 
 import sys
 if 'runserver' in sys.argv or 'gunicorn' in sys.argv:
     print(f"\n[CONFIG] BREVO_API_KEY={'✓ definido' if BREVO_API_KEY else '✗ VACÍO'}")
-    print(f"[CONFIG] DEFAULT_FROM_EMAIL={DEFAULT_FROM_EMAIL}\n")
+    print(f"[CONFIG] DEFAULT_FROM_EMAIL={DEFAULT_FROM_EMAIL}")
+    print(f"[CONFIG] WHATSAPP_TOKEN={'✓ definido' if os.getenv('WHATSAPP_ACCESS_TOKEN') else '✗ VACÍO'}")
+    print(f"[CONFIG] WHATSAPP_PHONE_ID={'✓ definido' if os.getenv('WHATSAPP_PHONE_NUMBER_ID') else '✗ VACÍO'}")
+    print(f"[CONFIG] Webhook URL: https://{os.getenv('RENDER_EXTERNAL_HOSTNAME', 'TU-DOMINIO')}/whatsapp-webhook/\n")
