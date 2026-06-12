@@ -1,5 +1,6 @@
 import imaplib
 import email
+import traceback
 from email.header import decode_header
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
@@ -16,97 +17,76 @@ from .models import Contacto, TipoContacto, TipoIdentificacion, Interaccion, Tip
 
 def enviar_correo_seguro(asunto, texto_plano, destinatarios):
     try:
-        html_content = f"""
-        <html>
-        <body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #333; line-height: 1.6; background-color: #F4F7FE; padding: 20px;">
-            <div style="max-width: 600px; margin: 0 auto; background: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
-                <div style="text-align: center; margin-bottom: 25px;">
-                    <h1 style="color: #D32F2F; margin: 0; font-size: 24px;">Constructora Dyco</h1>
-                    <p style="color: #A3AED0; margin: 5px 0 0 0; font-size: 14px;">Gestión y CRM</p>
-                </div>
-                <div style="font-size: 15px; color: #1B2559;">
-                    {texto_plano.replace(chr(10), '<br>')}
-                </div>
-                <hr style="border: none; border-top: 1px solid #E9EDF7; margin: 30px 0 20px 0;">
-                <p style="font-size: 12px; color: #A3AED0; text-align: center; margin: 0;">
-                    Este es un mensaje automático de Constructora Dyco, por favor no respondas a este correo.
-                </p>
-            </div>
-        </body>
-        </html>
-        """
-        remitente = f"Constructora Dyco <{settings.DEFAULT_FROM_EMAIL}>"
-        msg = EmailMultiAlternatives(asunto, texto_plano, remitente, destinatarios)
-        msg.attach_alternative(html_content, "text/html")
-        msg.send(fail_silently=False)
-    except Exception as e:
-        print(f"[EMAIL ERROR] {e}")
+        send_mail(asunto, texto_plano, settings.DEFAULT_FROM_EMAIL, destinatarios, fail_silently=True)
+    except Exception:
+        pass
 
 
 def registro_view(request):
     error = ""
-    # Asegurar que los roles existan
-    Rol.objects.get_or_create(nombre_rol="Administrador")
-    Rol.objects.get_or_create(nombre_rol="Usuario")
-    
-    if request.method == "POST":
-        nombre = request.POST.get("usuario")
-        email = request.POST.get("email")
-        
-        # Asignar el rol "Usuario" por defecto
-        rol_obj = Rol.objects.filter(nombre_rol="Usuario").first()
-        rol_id = rol_obj.id if rol_obj else None
-        
-        passw = request.POST.get("password")
-        
-        # Validación de duplicados
-        usuario_sin_verificar = Usuario.objects.filter(email=email, activo=False).first()
-        if usuario_sin_verificar:
-            import random
-            pin = str(random.randint(100000, 999999))
-            usuario_sin_verificar.token_verificacion = pin
-            usuario_sin_verificar.save()
-            enviar_correo_seguro(
-                'Verifica tu cuenta (reenvío) - CRM',
-                f'Hola {usuario_sin_verificar.nombre_usuario},\n\nTu nuevo código de verificación es: {pin}\n\nIntroduce este código en la web para activar tu cuenta.',
-                [usuario_sin_verificar.email]
-            )
-            print(f"\n[SOPORTE] Código de verificación (reenvío) para {usuario_sin_verificar.nombre_usuario}: {pin}\n")
-            return render(request, "registro.html", {
-                "success": "Te hemos reenviado un nuevo código de verificación. Revisa tu correo o la consola.",
-                "roles": Rol.objects.all(),
-                "show_pin": True,
-                "email_reg": email
-            })
-        elif Usuario.objects.filter(nombre_usuario=nombre).exists():
-            error = "Este nombre de usuario ya está ocupado."
-        elif Usuario.objects.filter(email=email, activo=True).exists():
-            error = "Este correo electrónico ya está registrado y verificado."
-        else:
-            import random
-            pin = str(random.randint(100000, 999999))
-            Usuario.objects.create(
-                nombre_usuario=nombre,
-                email=email,
-                rol_id=rol_id,
-                password_hash=passw,
-                activo=False,
-                token_verificacion=pin
-            )
-            enviar_correo_seguro(
-                'Bienvenido al CRM - Código de Verificación',
-                f'Hola {nombre},\n\nTu código para activar tu cuenta es: {pin}\n\nIntroduce este código en la web para terminar tu registro.',
-                [email]
-            )
-            print(f"\n[SOPORTE] Código de verificación para {nombre}: {pin}\n")
-            return render(request, "registro.html", {
-                "success": "Registro exitoso. Introduce el código de 6 dígitos que enviamos a tu correo para activar tu cuenta.",
-                "roles": Rol.objects.all(),
-                "show_pin": True,
-                "email_reg": email
-            })
-                
     roles = Rol.objects.all()
+    try:
+        Rol.objects.get_or_create(nombre_rol="Administrador")
+        Rol.objects.get_or_create(nombre_rol="Usuario")
+        
+        if request.method == "POST":
+            nombre = request.POST.get("usuario")
+            email = request.POST.get("email")
+            
+            rol_obj = Rol.objects.filter(nombre_rol="Usuario").first()
+            rol_id = rol_obj.id if rol_obj else None
+            
+            passw = request.POST.get("password")
+            
+            usuario_sin_verificar = Usuario.objects.filter(email=email, activo=False).first()
+            if usuario_sin_verificar:
+                import random
+                pin = str(random.randint(100000, 999999))
+                usuario_sin_verificar.token_verificacion = pin
+                usuario_sin_verificar.save()
+                enviar_correo_seguro(
+                    'Verifica tu cuenta (reenvío) - CRM',
+                    f'Hola {usuario_sin_verificar.nombre_usuario},\n\nTu nuevo código de verificación es: {pin}\n\nIntroduce este código en la web para activar tu cuenta.',
+                    [usuario_sin_verificar.email]
+                )
+                print(f"\n[SOPORTE] Código de verificación (reenvío) para {usuario_sin_verificar.nombre_usuario}: {pin}\n")
+                return render(request, "registro.html", {
+                    "success": "Te hemos reenviado un nuevo código de verificación. Revisa tu correo o la consola.",
+                    "roles": roles,
+                    "show_pin": True,
+                    "email_reg": email
+                })
+            elif Usuario.objects.filter(nombre_usuario=nombre).exists():
+                error = "Este nombre de usuario ya está ocupado."
+            elif Usuario.objects.filter(email=email, activo=True).exists():
+                error = "Este correo electrónico ya está registrado y verificado."
+            else:
+                import random
+                pin = str(random.randint(100000, 999999))
+                Usuario.objects.create(
+                    nombre_usuario=nombre,
+                    email=email,
+                    rol_id=rol_id,
+                    password_hash=passw,
+                    activo=False,
+                    token_verificacion=pin
+                )
+                enviar_correo_seguro(
+                    'Bienvenido al CRM - Código de Verificación',
+                    f'Hola {nombre},\n\nTu código para activar tu cuenta es: {pin}\n\nIntroduce este código en la web para terminar tu registro.',
+                    [email]
+                )
+                print(f"\n[SOPORTE] Código de verificación para {nombre}: {pin}\n")
+                return render(request, "registro.html", {
+                    "success": "Registro exitoso. Introduce el código de 6 dígitos que enviamos a tu correo para activar tu cuenta.",
+                    "roles": roles,
+                    "show_pin": True,
+                    "email_reg": email
+                })
+    except Exception as e:
+        error = f"Error interno: {e}"
+        traceback.print_exc()
+                
     return render(request, "registro.html", {"roles": roles, "error": error})
 
 def verificar_correo(request):
