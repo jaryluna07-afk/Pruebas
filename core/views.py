@@ -17,34 +17,72 @@ from .models import Contacto, TipoContacto, TipoIdentificacion, Interaccion, Tip
 
 def enviar_correo_seguro(asunto, texto_plano, destinatarios):
     try:
-        resend_key = getattr(settings, 'RESEND_API_KEY', '')
-        if resend_key:
-            import urllib.request
-            import json
-            
-            url = "https://api.resend.com/emails"
-            headers = {
-                "Authorization": f"Bearer {resend_key}",
-                "Content-Type": "application/json"
-            }
-            payload = {
-                "from": "Constructora Dyco <onboarding@resend.dev>",
-                "to": destinatarios,
-                "subject": asunto,
-                "text": texto_plano
-            }
-            req = urllib.request.Request(
-                url,
-                data=json.dumps(payload).encode('utf-8'),
-                headers=headers,
-                method='POST'
-            )
-            with urllib.request.urlopen(req, timeout=5) as response:
-                print(f"[RESEND EMAIL] Sent successfully: {response.read().decode('utf-8')}")
-        else:
-            send_mail(asunto, texto_plano, settings.DEFAULT_FROM_EMAIL, destinatarios, fail_silently=True)
-    except Exception as e:
-        print(f"[EMAIL ERROR] Failed to send email: {e}")
+        from_email = settings.DEFAULT_FROM_EMAIL or 'noreply@constructora-dyco.com'
+        html_body = texto_plano.replace('\n', '<br>')
+        html_content = f"""<html><body style="font-family:Segoe UI,Tahoma,sans-serif;color:#333;background:#F4F7FE;padding:20px"><div style="max-width:600px;margin:0 auto;background:#fff;padding:30px;border-radius:12px"><h1 style="color:#D32F2F;margin:0;font-size:24px">Constructora Dyco</h1><p style="color:#A3AED0;font-size:14px">Gesti&oacute;n y CRM</p><hr style="border:none;border-top:1px solid #E9EDF7;margin:20px 0"><div style="font-size:15px;color:#1B2559">{html_body}</div></div></body></html>"""
+        msg = EmailMultiAlternatives(asunto, texto_plano, from_email, destinatarios)
+        msg.attach_alternative(html_content, "text/html")
+        msg.send(fail_silently=True)
+    except Exception:
+        pass
+
+def enviar_whatsapp_registro(telefono, pin):
+    import urllib.request
+    import urllib.error
+    import json
+    
+    if not telefono:
+        _log_whatsapp_debug("[REGISTRO WHATSAPP ERROR] No phone number provided.")
+        return False
+        
+    formatted_phone = format_whatsapp_number(telefono)
+    texto = f"Tu código de verificación de Constructora Dyco es: {pin}"
+    _log_whatsapp_debug(f"Sending verification code to: raw_phone='{telefono}', formatted_phone='{formatted_phone}', pin='{pin}'")
+    
+    token = getattr(settings, 'WHATSAPP_ACCESS_TOKEN', '')
+    phone_id = getattr(settings, 'WHATSAPP_PHONE_NUMBER_ID', '')
+    
+    success = False
+    
+    if token and token != 'EAAG_PLACEHOLDER' and phone_id and phone_id != 'PHONE_ID_PLACEHOLDER':
+        url = f"https://graph.facebook.com/v18.0/{phone_id}/messages"
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "to": formatted_phone,
+            "type": "text",
+            "text": {"preview_url": False, "body": texto}
+        }
+        _log_whatsapp_debug(f"Meta request payload: {json.dumps(payload)}")
+        req = urllib.request.Request(
+            url,
+            data=json.dumps(payload).encode('utf-8'),
+            headers=headers,
+            method='POST'
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=8) as response:
+                res_body = response.read().decode('utf-8')
+                _log_whatsapp_debug(f"Meta API Success Response: status={response.status}, body={res_body}")
+                if response.status in [200, 201]:
+                    success = True
+                else:
+                    print(f"WhatsApp Cloud API Error: {res_body}")
+        except urllib.error.HTTPError as e:
+            res_body = e.read().decode('utf-8') if e.fp else str(e)
+            _log_whatsapp_debug(f"Meta API HTTP Error: code={e.code}, body={res_body}")
+            print(f"WhatsApp Cloud API Error: {res_body}")
+        except Exception as e:
+            _log_whatsapp_debug(f"Meta API request exception: {str(e)}")
+            print(f"WhatsApp Request Exception: {e}")
+    else:
+        _log_whatsapp_debug("Skipping Meta request: credentials not set or placeholder.")
+        
+    return success
 
 def registro_view(request):
     error = ""
@@ -56,6 +94,7 @@ def registro_view(request):
         if request.method == "POST":
             nombre = request.POST.get("usuario")
             email = request.POST.get("email")
+            telefono = request.POST.get("telefono", "").strip()
             
             rol_obj = Rol.objects.filter(nombre_rol="Usuario").first()
             rol_id = rol_obj.id if rol_obj else None
@@ -67,18 +106,17 @@ def registro_view(request):
                 import random
                 pin = str(random.randint(100000, 999999))
                 usuario_sin_verificar.token_verificacion = pin
+                if telefono:
+                    usuario_sin_verificar.telefono = telefono
                 usuario_sin_verificar.save()
-                enviar_correo_seguro(
-                    'Verifica tu cuenta (reenvío) - CRM',
-                    f'Hola {usuario_sin_verificar.nombre_usuario},\n\nTu nuevo código de verificación es: {pin}\n\nIntroduce este código en la web para activar tu cuenta.',
-                    [usuario_sin_verificar.email]
-                )
+                enviar_whatsapp_registro(usuario_sin_verificar.telefono, pin)
                 print(f"\n[SOPORTE] Código de verificación (reenvío) para {usuario_sin_verificar.nombre_usuario}: {pin}\n")
                 return render(request, "registro.html", {
-                    "success": "Te hemos reenviado un nuevo código de verificación. Revisa tu correo o la consola.",
+                    "success": "Te hemos reenviado un nuevo código de verificación por WhatsApp. Revisa tu celular.",
                     "roles": roles,
                     "show_pin": True,
-                    "email_reg": email
+                    "email_reg": email,
+                    "telefono_reg": usuario_sin_verificar.telefono
                 })
             elif Usuario.objects.filter(nombre_usuario=nombre).exists():
                 error = "Este nombre de usuario ya está ocupado."
@@ -93,19 +131,17 @@ def registro_view(request):
                     rol_id=rol_id,
                     password_hash=passw,
                     activo=False,
-                    token_verificacion=pin
+                    token_verificacion=pin,
+                    telefono=telefono
                 )
-                enviar_correo_seguro(
-                    'Bienvenido al CRM - Código de Verificación',
-                    f'Hola {nombre},\n\nTu código para activar tu cuenta es: {pin}\n\nIntroduce este código en la web para terminar tu registro.',
-                    [email]
-                )
+                enviar_whatsapp_registro(telefono, pin)
                 print(f"\n[SOPORTE] Código de verificación para {nombre}: {pin}\n")
                 return render(request, "registro.html", {
-                    "success": "Registro exitoso. Introduce el código de 6 dígitos que enviamos a tu correo para activar tu cuenta.",
+                    "success": "Registro exitoso. Introduce el código de 6 dígitos que enviamos por WhatsApp para activar tu cuenta.",
                     "roles": roles,
                     "show_pin": True,
-                    "email_reg": email
+                    "email_reg": email,
+                    "telefono_reg": telefono
                 })
     except Exception as e:
         error = f"Error interno: {e}"
@@ -129,17 +165,20 @@ def verificar_correo(request):
             u.save()
             return render(request, "login.html", {"success": "Cuenta verificada con éxito. Ya puedes iniciar sesión.", "roles": Rol.objects.all()})
         else:
+            u_by_email = Usuario.objects.filter(email__iexact=email).first()
+            telefono_reg = u_by_email.telefono if u_by_email else ""
             return render(request, "registro.html", {
                 "error": "Código de verificación incorrecto.", 
                 "roles": Rol.objects.all(),
                 "show_pin": True,
-                "email_reg": email
+                "email_reg": email,
+                "telefono_reg": telefono_reg
             })
             
     return redirect('/registro/')
 
 def reenviar_pin(request):
-    """Reenvía el PIN de verificación al correo registrado."""
+    """Reenvía el PIN de verificación al WhatsApp registrado."""
     if request.method == "POST":
         email = request.POST.get("email", "").strip()
         u = Usuario.objects.filter(email__iexact=email, activo=False).first()
@@ -148,24 +187,22 @@ def reenviar_pin(request):
             pin = str(random.randint(100000, 999999))
             u.token_verificacion = pin
             u.save()
-            enviar_correo_seguro(
-                'Nuevo código de verificación - Constructora Dyco',
-                f'Hola {u.nombre_usuario},\n\nTu nuevo código de verificación es: {pin}\n\nEste código expirará en 5 minutos.',
-                [u.email]
-            )
+            enviar_whatsapp_registro(u.telefono, pin)
             print(f"\n[SOPORTE] Nuevo PIN reenviado para {u.nombre_usuario}: {pin}\n")
             return render(request, "registro.html", {
-                "success": "Se ha reenviado un nuevo código a tu correo.",
+                "success": "Se ha reenviado un nuevo código a tu WhatsApp.",
                 "roles": Rol.objects.all(),
                 "show_pin": True,
-                "email_reg": email
+                "email_reg": email,
+                "telefono_reg": u.telefono
             })
         else:
             return render(request, "registro.html", {
                 "error": "No encontramos una cuenta pendiente con ese correo.",
                 "roles": Rol.objects.all(),
                 "show_pin": True,
-                "email_reg": email
+                "email_reg": email,
+                "telefono_reg": ""
             })
     return redirect('/registro/')
 
@@ -181,14 +218,16 @@ def cambiar_correo_registro(request):
                 "error": "No se encontró la cuenta pendiente de verificación.",
                 "roles": Rol.objects.all(),
                 "show_pin": True,
-                "email_reg": email_viejo
+                "email_reg": email_viejo,
+                "telefono_reg": ""
             })
         if Usuario.objects.filter(email__iexact=email_nuevo, activo=True).exists():
             return render(request, "registro.html", {
                 "error": "Ese correo ya está en uso por otra cuenta verificada.",
                 "roles": Rol.objects.all(),
                 "show_pin": True,
-                "email_reg": email_viejo
+                "email_reg": email_viejo,
+                "telefono_reg": u.telefono
             })
         import random
         pin = str(random.randint(100000, 999999))
@@ -196,21 +235,18 @@ def cambiar_correo_registro(request):
         u.token_verificacion = pin
         u.save()
         try:
-            enviar_correo_seguro(
-                'Código de verificación - Constructora Dyco',
-                f'Hola {u.nombre_usuario},\n\nTu código de verificación para tu nuevo correo es: {pin}\n\nEste código expirará en 5 minutos.',
-                [email_nuevo]
-            )
-            print(f"\n[SOPORTE] PIN enviado al nuevo correo {email_nuevo} para {u.nombre_usuario}: {pin}\n")
+            enviar_whatsapp_registro(u.telefono, pin)
+            print(f"\n[SOPORTE] PIN enviado por WhatsApp a {u.telefono} para {u.nombre_usuario}: {pin}\n")
         except Exception as e:
-            print(f"[EMAIL ERROR] {e}")
-            error = f"No se pudo enviar el correo: {e}"
+            print(f"[WHATSAPP ERROR] {e}")
+            error = f"No se pudo enviar el mensaje de WhatsApp: {e}"
         return render(request, "registro.html", {
-            "success": f"Correo actualizado. Hemos enviado un nuevo código a {email_nuevo}.",
+            "success": f"Correo actualizado. Hemos enviado un nuevo código por WhatsApp a {u.telefono}.",
             "error": error,
             "roles": Rol.objects.all(),
             "show_pin": True,
-            "email_reg": email_nuevo
+            "email_reg": email_nuevo,
+            "telefono_reg": u.telefono
         })
     return redirect('/registro/')
 
