@@ -219,17 +219,17 @@
                     <div class="grupo-campo">
                         <label>Número</label>
                         <input type="text" name="documento_nit" id="doc_nat" class="entrada-texto"
-                            placeholder="1010...">
+                            placeholder="1010..." oninput="this.value = this.value.replace(/[^0-9\-]/g, '')">
                     </div>
                 </div>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
                     <div class="grupo-campo">
                         <label>Nombres</label>
-                        <input type="text" name="nombre" id="n" class="entrada-texto" placeholder="Juan">
+                        <input type="text" name="nombre" id="n" class="entrada-texto" placeholder="Juan" oninput="this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, '')">
                     </div>
                     <div class="grupo-campo">
                         <label>Apellidos</label>
-                        <input type="text" name="apellido" id="a" class="entrada-texto" placeholder="Pérez">
+                        <input type="text" name="apellido" id="a" class="entrada-texto" placeholder="Pérez" oninput="this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, '')">
                     </div>
                 </div>
             </div>
@@ -252,7 +252,7 @@
                     <div class="grupo-campo">
                         <label>Número</label>
                         <input type="text" name="documento_nit" id="doc_jur" class="entrada-texto"
-                            placeholder="Número...">
+                            placeholder="Número..." oninput="this.value = this.value.replace(/[^0-9\-]/g, '')">
                     </div>
                 </div>
                 <div class="grupo-campo">
@@ -263,7 +263,7 @@
                 <div class="grupo-campo">
                     <label>Nombre del Representante</label>
                     <input type="text" name="nombre_rep_legal" id="rep" class="entrada-texto"
-                        placeholder="Ej: Juan Pérez">
+                        placeholder="Ej: Juan Pérez" oninput="this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, '')">
                 </div>
             </div>
 

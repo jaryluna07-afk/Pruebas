@@ -463,7 +463,7 @@
                 <div class="grupo-campo">
                     <label>Número de Identificación / NIT</label>
                     <input type="text" name="documento_nit" class="entrada-texto" value="{{ c.documento_nit }}"
-                        style="max-width: 300px;" required>
+                        style="max-width: 300px;" required oninput="this.value = this.value.replace(/[^0-9\-]/g, '')">
                 </div>
 
                 <!-- SECCIÓN DINÁMICA (NATURAL) -->
@@ -471,12 +471,12 @@
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
                         <div class="grupo-campo">
                             <label>Nombres</label>
-                            <input type="text" name="nombre" class="entrada-texto" value="{{ c.nombre|default:'' }}">
+                            <input type="text" name="nombre" class="entrada-texto" value="{{ c.nombre|default:'' }}" oninput="this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, '')">
                         </div>
                         <div class="grupo-campo">
                             <label>Apellidos</label>
                             <input type="text" name="apellido" class="entrada-texto"
-                                value="{{ c.apellido|default:'' }}">
+                                value="{{ c.apellido|default:'' }}" oninput="this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, '')">
                         </div>
                     </div>
                 </div>
@@ -491,7 +491,7 @@
                     <div class="grupo-campo">
                         <label>Nombre del Representante</label>
                         <input type="text" name="nombre_rep_legal" class="entrada-texto"
-                            value="{{ c.nombre_rep_legal|default:'' }}" placeholder="Persona a cargo">
+                            value="{{ c.nombre_rep_legal|default:'' }}" placeholder="Persona a cargo" oninput="this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, '')">
                     </div>
                 </div>
 
