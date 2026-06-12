@@ -16,7 +16,7 @@ from django.db.models import Q, Count, Sum
 from django.db.models.functions import TruncMonth
 from .models import Contacto, TipoContacto, TipoIdentificacion, Interaccion, TipoInteraccion, Usuario, Rol, FirmaDigital, MensajeWhatsApp
 
-def enviar_correo_seguro(asunto, texto_plano, destinatarios):
+def enviar_correo_seguro(asunto, texto_plano, destinatarios, html_content=None):
     import json, urllib.request, urllib.error
     api_key = getattr(settings, 'BREVO_API_KEY', '')
     if not api_key:
@@ -25,8 +25,9 @@ def enviar_correo_seguro(asunto, texto_plano, destinatarios):
         from_email = settings.DEFAULT_FROM_EMAIL
         if not from_email:
             return "No hay DEFAULT_FROM_EMAIL configurado en las variables de entorno de Render. En Brevo ve a Centro de Ventas → Remitentes y verifica un correo."
-        html_body = texto_plano.replace('\n', '<br>')
-        html_content = f"""<html><body style="font-family:Segoe UI,Tahoma,sans-serif;color:#333;background:#F4F7FE;padding:20px"><div style="max-width:600px;margin:0 auto;background:#fff;padding:30px;border-radius:12px"><h1 style="color:#D32F2F;margin:0;font-size:24px">Constructora Dyco</h1><p style="color:#A3AED0;font-size:14px">Gesti&oacute;n y CRM</p><hr style="border:none;border-top:1px solid #E9EDF7;margin:20px 0"><div style="font-size:15px;color:#1B2559">{html_body}</div></div></body></html>"""
+        if not html_content:
+            html_body = texto_plano.replace('\n', '<br>')
+            html_content = f"""<html><body style="font-family:Segoe UI,Tahoma,sans-serif;color:#333;background:#F4F7FE;padding:20px"><div style="max-width:600px;margin:0 auto;background:#fff;padding:30px;border-radius:12px"><h1 style="color:#D32F2F;margin:0;font-size:24px">Constructora Dyco</h1><p style="color:#A3AED0;font-size:14px">Gesti&oacute;n y CRM</p><hr style="border:none;border-top:1px solid #E9EDF7;margin:20px 0"><div style="font-size:15px;color:#1B2559">{html_body}</div></div></body></html>"""
         payload = json.dumps({
             "sender": {"name": "Constructora Dyco", "email": from_email},
             "to": [{"email": d} for d in destinatarios],
@@ -1365,76 +1366,32 @@ def detalle_contacto(request, id_contacto):
 
         if tipo_obj.nombre_tipo == 'Correo':
             destinatario = request.POST.get('para_correo') or contacto.correo
-            # Enviar el correo REALMENTE por SMTP
             if destinatario:
                 try:
-                    # Incorporar Firma Digital si el usuario la tiene
                     html_body = detalle
                     firma = getattr(usuario_logueado, 'firma_digital', None)
-                    if firma:
-                        if firma.html_content:
-                            html_body += f"<br><br>{firma.html_content}"
+                    if firma and firma.html_content:
+                        html_body += f"<br><br>{firma.html_content}"
 
-                    # Adjuntos adicionales cargados por el usuario
-                    adjuntos_paths = request.POST.getlist('adjuntos_correo_paths')
-                    if not adjuntos_paths:
-                        paths_str = request.POST.get('adjuntos_correo_paths', '')
-                        if paths_str:
-                            adjuntos_paths = [p.strip() for p in paths_str.split(',') if p.strip()]
-
-                    import re, base64, uuid
-                    from email.mime.image import MIMEImage
-
-                    from django.core.mail import make_msgid
-                    msg_id = make_msgid()
-
-                    email_msg = EmailMultiAlternatives(
-                        subject=asunto if asunto else f"Mensaje de {usuario_logueado.nombre_usuario}",
-                        body=detalle, # Texto plano como fallback
-                        from_email=None,
-                        to=[destinatario]
+                    email_err = enviar_correo_seguro(
+                        asunto if asunto else f"Mensaje de {usuario_logueado.nombre_usuario}",
+                        html_body,
+                        [destinatario],
+                        html_content=html_body
                     )
-                    email_msg.extra_headers['Message-ID'] = msg_id
 
-                    # Procesar imágenes base64 y convertirlas en adjuntos CID inline para compatibilidad
-                    imagenes_adjuntas = []
-                    def _reemplazar_base64(match):
-                        ext = match.group(1)
-                        b64_data = match.group(2)
-                        cid_id = str(uuid.uuid4())
-                        try:
-                            img_data = base64.b64decode(b64_data)
-                            mime_img = MIMEImage(img_data, _subtype=ext)
-                            mime_img.add_header('Content-ID', f'<{cid_id}>')
-                            mime_img.add_header('Content-Disposition', 'inline')
-                            imagenes_adjuntas.append(mime_img)
-                            return f'src="cid:{cid_id}"'
-                        except Exception:
-                            return match.group(0)
-
-                    html_body = re.sub(r'src=["\']data:image/([^;]+);base64,([^"\' >]+)["\']', _reemplazar_base64, html_body)
-
-                    email_msg.attach_alternative(html_body, "text/html")
-                    
-                    for img in imagenes_adjuntas:
-                        email_msg.attach(img)
-                    
-                    import os
-                    for path in adjuntos_paths:
-                        if os.path.exists(path):
-                            email_msg.attach_file(path)
-
-                    email_msg.send(fail_silently=False)
-
-                    # Actualizar historial con confirmación de envío
-                    inter.mensaje_id = msg_id.strip('<>')
-                    inter.historial_cambios = (inter.historial_cambios or '') + f"\n[{timezone.localtime(timezone.now()).strftime('%d/%m/%Y %H:%M')}] Correo enviado exitosamente a {destinatario}"
-                    inter.save()
-                    messages.success(request, f"¡Correo enviado con éxito a {destinatario}!")
+                    if email_err:
+                        inter.historial_cambios = (inter.historial_cambios or '') + f"\n[{timezone.localtime(timezone.now()).strftime('%d/%m/%Y %H:%M')}] ERROR: {email_err}"
+                        inter.save()
+                        messages.error(request, f"Error al enviar correo: {email_err}")
+                    else:
+                        inter.historial_cambios = (inter.historial_cambios or '') + f"\n[{timezone.localtime(timezone.now()).strftime('%d/%m/%Y %H:%M')}] Correo enviado exitosamente a {destinatario}"
+                        inter.save()
+                        messages.success(request, f"¡Correo enviado con éxito a {destinatario}!")
                 except Exception as e:
-                    inter.historial_cambios = (inter.historial_cambios or '') + f"\n[{timezone.localtime(timezone.now()).strftime('%d/%m/%Y %H:%M')}] ERROR al enviar correo: {str(e)}"
+                    inter.historial_cambios = (inter.historial_cambios or '') + f"\n[{timezone.localtime(timezone.now()).strftime('%d/%m/%Y %H:%M')}] ERROR: {str(e)}"
                     inter.save()
-                    messages.error(request, f"Error al enviar el correo: {str(e)}")
+                    messages.error(request, f"Error al enviar correo: {str(e)}")
             else:
                 messages.warning(request, "El contacto no tiene correo electrónico registrado.")
             return redirect(f'/contacto/{id_contacto}/?tab=correos')
