@@ -51,6 +51,7 @@ urlpatterns = [
     path('contacto/<int:id_contacto>/whatsapp/mensajes/', views.obtener_mensajes_whatsapp, name='obtener_mensajes_whatsapp'),
     path('contacto/<int:id_contacto>/alertas/', views.obtener_notificaciones_contacto, name='obtener_notificaciones_contacto'),
     path('whatsapp/webhook/', views.whatsapp_webhook, name='whatsapp_webhook'),
+    path('ultramsg-webhook/', views.ultramsg_webhook, name='ultramsg_webhook'),
 ]
 
 from django.conf import settings

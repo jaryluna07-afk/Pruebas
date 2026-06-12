@@ -2479,90 +2479,84 @@ def whatsapp_webhook(request):
             
         return HttpResponse('EVENT_RECEIVED', status=200)
 
+def _enviar_ultramsg(phone, message):
+    """Envía mensaje por UltraMsg. Retorna (success, whatsapp_id, error_msg)."""
+    import urllib.request, urllib.parse, json
+    instance_id = getattr(settings, 'ULTRAMSG_INSTANCE_ID', '')
+    token = getattr(settings, 'ULTRAMSG_TOKEN', '')
+    if not instance_id or not token:
+        return False, None, "ULTRAMSG_INSTANCE_ID o ULTRAMSG_TOKEN no configurados"
+    try:
+        data = urllib.parse.urlencode({"token": token, "to": phone, "body": message}).encode()
+        req = urllib.request.Request(
+            f"https://api.ultramsg.com/{instance_id}/messages/chat",
+            data=data,
+            method='POST'
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            body = json.loads(resp.read().decode())
+            if body.get("sent"):
+                return True, body.get("messageId", ""), None
+            return False, None, body.get("error", "Error desconocido de UltraMsg")
+    except Exception as e:
+        return False, None, f"UltraMsg: {e}"
+
+@csrf_exempt
+def ultramsg_webhook(request):
+    """Webhook para recibir mensajes entrantes desde UltraMsg."""
+    import json
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body.decode('utf-8'))
+            _log_whatsapp_debug(f"UltraMsg webhook: {json.dumps(data)}")
+            msg_data = data.get('data', {})
+            from_phone = msg_data.get('from', '')
+            text = msg_data.get('body', '')
+            msg_id = msg_data.get('messageId', '')
+            if from_phone and text:
+                contacto = find_contact_by_phone(from_phone)
+                if contacto:
+                    MensajeWhatsApp.objects.create(
+                        contacto=contacto,
+                        texto=text,
+                        direccion='Entrante',
+                        whatsapp_id=msg_id,
+                        estado='leido'
+                    )
+                    _log_whatsapp_debug(f"Saved incoming from {from_phone}")
+        except Exception as e:
+            _log_whatsapp_debug(f"UltraMsg webhook error: {e}")
+        return HttpResponse('OK', status=200)
+    return HttpResponse('OK', status=200)
+
 @csrf_exempt
 def enviar_mensaje_whatsapp(request, id_contacto):
     id_sesion = request.session.get('user_id')
     if not id_sesion:
         return JsonResponse({'status': 'error', 'message': 'No autenticado'}, status=401)
-        
     usuario_logueado = Usuario.objects.get(id=id_sesion)
     contacto = get_object_or_404(Contacto, id=id_contacto)
-    
     if request.method == "POST":
         texto = request.POST.get('texto', '').strip()
         if not texto:
             return JsonResponse({'status': 'error', 'message': 'El mensaje no puede estar vacío'}, status=400)
-            
-        phone_to_use = contacto.celular or contacto.telefono
-        _log_whatsapp_debug(f"Sending message to contact ID={id_contacto} ({contacto.nombre} {contacto.apellido}): raw_phone='{phone_to_use}', text='{texto}'")
-        if not phone_to_use:
-            _log_whatsapp_debug(f"Error: contact ID={id_contacto} has no phone number")
-            return JsonResponse({'status': 'error', 'message': 'El contacto no tiene un número de celular/teléfono registrado'}, status=400)
-            
-        formatted_phone = format_whatsapp_number(phone_to_use)
-        _log_whatsapp_debug(f"Formatted phone: '{formatted_phone}'")
-        
-        success = False
-        whatsapp_id = None
-        error_msg = None
-        
-        token = getattr(settings, 'WHATSAPP_ACCESS_TOKEN', '')
-        phone_id = getattr(settings, 'WHATSAPP_PHONE_NUMBER_ID', '')
-        
-        _log_whatsapp_debug(f"Credentials status: token_exists={bool(token)}, phone_id='{phone_id}'")
-        
-        if token and phone_id:
-            url = f"https://graph.facebook.com/v18.0/{phone_id}/messages"
-            headers = {
-                "Authorization": f"Bearer {token}",
-                "Content-Type": "application/json"
-            }
-            payload = {
-                "messaging_product": "whatsapp",
-                "recipient_type": "individual",
-                "to": formatted_phone,
-                "type": "text",
-                "text": {"preview_url": False, "body": texto}
-            }
-            _log_whatsapp_debug(f"Meta request payload: {json.dumps(payload)}")
-            req = urllib.request.Request(
-                url,
-                data=json.dumps(payload).encode('utf-8'),
-                headers=headers,
-                method='POST'
-            )
-            try:
-                with urllib.request.urlopen(req, timeout=8) as response:
-                    res_body = response.read().decode('utf-8')
-                    _log_whatsapp_debug(f"Meta API Success Response: status={response.status}, body={res_body}")
-                    if response.status in [200, 201]:
-                        res_data = json.loads(res_body)
-                        whatsapp_id = res_data.get('messages', [{}])[0].get('id')
-                        success = True
-            except urllib.error.HTTPError as e:
-                res_body = e.read().decode('utf-8') if e.fp else str(e)
-                error_msg = f"Meta API error {e.code}: {res_body}"
-                _log_whatsapp_debug(error_msg)
-            except Exception as e:
-                error_msg = f"Error de conexión: {e}"
-                _log_whatsapp_debug(error_msg)
-        else:
-            error_msg = "WHATSAPP_ACCESS_TOKEN o WHATSAPP_PHONE_NUMBER_ID no están configurados en Render"
-            _log_whatsapp_debug(error_msg)
-            
+        phone = contacto.celular or contacto.telefono
+        if not phone:
+            return JsonResponse({'status': 'error', 'message': 'El contacto no tiene celular/telefono'}, status=400)
+        formatted = format_whatsapp_number(phone)
+        success, wa_id, err = _enviar_ultramsg(formatted, texto)
         MensajeWhatsApp.objects.create(
             contacto=contacto,
             remitente_usuario=usuario_logueado,
             texto=texto,
             direccion='Saliente',
-            whatsapp_id=whatsapp_id or f"mock-{uuid.uuid4()}",
+            whatsapp_id=wa_id or f"mock-{uuid.uuid4()}",
             estado='enviado'
         )
-        
         if success:
-            return JsonResponse({'status': 'success', 'message': 'Mensaje enviado correctamente'})
+            return JsonResponse({'status': 'success', 'message': 'Mensaje enviado por WhatsApp'})
         else:
-            return JsonResponse({'status': 'warning', 'message': f'Mensaje guardado, pero no enviado a WhatsApp: {error_msg}', 'mock': True})
+            return JsonResponse({'status': 'warning', 'message': f'Mensaje guardado. Error al enviar: {err}', 'mock': True})
     return JsonResponse({'status': 'error', 'message': 'Método no permitido'}, status=405)
 
 def obtener_mensajes_whatsapp(request, id_contacto):
