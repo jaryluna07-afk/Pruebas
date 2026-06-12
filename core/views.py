@@ -1,5 +1,6 @@
 import imaplib
 import email
+import os
 import traceback
 from email.header import decode_header
 from django.shortcuts import render, redirect, get_object_or_404
@@ -16,22 +17,34 @@ from django.db.models.functions import TruncMonth
 from .models import Contacto, TipoContacto, TipoIdentificacion, Interaccion, TipoInteraccion, Usuario, Rol, FirmaDigital, MensajeWhatsApp
 
 def enviar_correo_seguro(asunto, texto_plano, destinatarios):
+    import json, urllib.request
+    api_key = getattr(settings, 'BREVO_API_KEY', '')
+    if not api_key:
+        print(f"[EMAIL] No BREVO_API_KEY configurada")
+        return
     try:
-        from_email = settings.DEFAULT_FROM_EMAIL
-        if not from_email:
-            print(f"[EMAIL] DEFAULT_FROM_EMAIL vacío, no se puede enviar")
-            return
-        print(f"[EMAIL] Enviando a {destinatarios} desde {from_email} via {settings.EMAIL_HOST}...")
         html_body = texto_plano.replace('\n', '<br>')
         html_content = f"""<html><body style="font-family:Segoe UI,Tahoma,sans-serif;color:#333;background:#F4F7FE;padding:20px"><div style="max-width:600px;margin:0 auto;background:#fff;padding:30px;border-radius:12px"><h1 style="color:#D32F2F;margin:0;font-size:24px">Constructora Dyco</h1><p style="color:#A3AED0;font-size:14px">Gesti&oacute;n y CRM</p><hr style="border:none;border-top:1px solid #E9EDF7;margin:20px 0"><div style="font-size:15px;color:#1B2559">{html_body}</div></div></body></html>"""
-        msg = EmailMultiAlternatives(asunto, texto_plano, from_email, destinatarios)
-        msg.attach_alternative(html_content, "text/html")
-        msg.send(fail_silently=False)
-        print(f"[EMAIL] Enviado exitosamente")
+        from_email = settings.DEFAULT_FROM_EMAIL or 'onboarding@resend.dev'
+        payload = json.dumps({
+            "sender": {"name": "Constructora Dyco", "email": from_email},
+            "to": [{"email": d} for d in destinatarios],
+            "subject": asunto,
+            "htmlContent": html_content
+        }).encode()
+        req = urllib.request.Request(
+            "https://api.brevo.com/v3/smtp/email",
+            data=payload,
+            headers={
+                "api-key": api_key,
+                "Content-Type": "application/json"
+            },
+            method='POST'
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            print(f"[BREVO] Email enviado: {resp.read().decode()}")
     except Exception as e:
-        print(f"[EMAIL ERROR] {e}")
-        import traceback
-        traceback.print_exc()
+        print(f"[BREVO ERROR] {e}")
 
 def enviar_whatsapp_registro(telefono, pin):
     import urllib.request

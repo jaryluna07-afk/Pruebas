@@ -146,6 +146,7 @@ EMAIL_TIMEOUT = 5
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER)
+BREVO_API_KEY = os.getenv('BREVO_API_KEY', '')
 
 # Configuración IMAP (Recibir Correos)
 IMAP_HOST = 'imap.gmail.com'
@@ -163,7 +164,5 @@ WHATSAPP_VERIFY_TOKEN = os.getenv('WHATSAPP_VERIFY_TOKEN', 'pato_123')
 
 import sys
 if 'runserver' in sys.argv or 'gunicorn' in sys.argv:
-    print(f"\n[CONFIG] EMAIL_HOST={EMAIL_HOST} PORT={EMAIL_PORT} TLS={EMAIL_USE_TLS}")
-    print(f"[CONFIG] EMAIL_HOST_USER={'✓ definido' if EMAIL_HOST_USER else '✗ VACÍO'}")
-    print(f"[CONFIG] EMAIL_HOST_PASSWORD={'✓ definido' if EMAIL_HOST_PASSWORD else '✗ VACÍO'}")
+    print(f"\n[CONFIG] BREVO_API_KEY={'✓ definido' if BREVO_API_KEY else '✗ VACÍO'}")
     print(f"[CONFIG] DEFAULT_FROM_EMAIL={DEFAULT_FROM_EMAIL}\n")
