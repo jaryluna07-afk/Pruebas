@@ -52,7 +52,8 @@ def enviar_correo_seguro(asunto, texto_plano, destinatarios, html_content=None, 
             data=payload,
             headers={
                 "api-key": api_key,
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
             },
             method='POST'
         )
@@ -373,6 +374,140 @@ def dashboard(request):
     if not user_id: return redirect('/login/')
     u = Usuario.objects.get(id=user_id)
     
+    if request.GET.get('ajax') == '1':
+        chart_id = request.GET.get('chart_id')
+        filter_val = request.GET.get('filter_val')
+        from datetime import timedelta
+        import datetime
+        now = timezone.now()
+        
+        def apply_date_filter(qs, val, date_field):
+            if val == 'ano':
+                return qs.filter(**{f"{date_field}__year": now.year})
+            elif val == 'mes':
+                return qs.filter(**{f"{date_field}__year": now.year, f"{date_field}__month": now.month})
+            elif val == 'semana':
+                return qs.filter(**{f"{date_field}__gte": now - timedelta(days=7)})
+            return qs
+
+        if chart_id == 'interTipo':
+            qs = Interaccion.objects.all()
+            qs = apply_date_filter(qs, filter_val, 'fecha_interaccion')
+            stats = qs.values('tipo_interaccion__nombre_tipo').annotate(total=Count('id'))
+            tipo_map = {'correo': 0, 'llamada': 0, 'reunion': 0, 'nota': 0, 'otros': 0}
+            for s in stats:
+                name = s['tipo_interaccion__nombre_tipo'].lower()
+                count = s['total']
+                if 'correo' in name:
+                    tipo_map['correo'] = count
+                elif 'llamada' in name:
+                    tipo_map['llamada'] = count
+                elif 'reunion' in name:
+                    tipo_map['reunion'] = count
+                elif 'nota' in name:
+                    tipo_map['nota'] = count
+                else:
+                    tipo_map['otros'] += count
+            return JsonResponse({
+                'status': 'success',
+                'data': [tipo_map['correo'], tipo_map['llamada'], tipo_map['reunion'], tipo_map['nota'], tipo_map['otros']]
+            })
+
+        elif chart_id == 'contactosTipo':
+            qs = Contacto.objects.all()
+            qs = apply_date_filter(qs, filter_val, 'fecha_registro')
+            natural_count = qs.filter(tipo_contacto__nombre_tipo="Persona Natural").count()
+            total_count = qs.count()
+            juridica_count = total_count - natural_count
+            return JsonResponse({
+                'status': 'success',
+                'data': [natural_count, juridica_count]
+            })
+
+        elif chart_id == 'usuarios':
+            activos = Usuario.objects.filter(activo=True).count()
+            inactivos = Usuario.objects.filter(activo=False).count()
+            return JsonResponse({
+                'status': 'success',
+                'data': [activos, inactivos]
+            })
+
+        elif chart_id == 'actividadReciente':
+            qs = Interaccion.objects.all()
+            qs = apply_date_filter(qs, filter_val, 'fecha_interaccion')
+            recientes = qs.order_by('-fecha_interaccion')[:8]
+            html = ""
+            if recientes:
+                for r in recientes:
+                    c_name = f"{r.contacto.nombre} {r.contacto.apellido}" if r.contacto.nombre else (r.contacto.razon_social or "")
+                    emoji = "&#128260;"
+                    t_name = r.tipo_interaccion.nombre_tipo
+                    if t_name == 'Llamada': emoji = "&#128222;"
+                    elif t_name == 'Correo': emoji = "&#9993;"
+                    elif t_name == 'Reunión': emoji = "&#128197;"
+                    elif t_name == 'Nota': emoji = "&#128221;"
+                    bg_color = "rgba(255,183,3,.15)"
+                    if r.estado == 'Exitosa': bg_color = "rgba(1,181,116,.15)"
+                    elif r.estado == 'No Lograda': bg_color = "rgba(211,47,47,.12)"
+                    badge_style = "rgba(255,183,3,.15);color:#FFB703"
+                    if r.estado == 'Exitosa': badge_style = "rgba(1,181,116,.15);color:#01B574"
+                    elif r.estado == 'No Lograda': badge_style = "rgba(211,47,47,.12);color:#D32F2F"
+                    fecha_str = r.fecha_interaccion.strftime("%d/%m/%Y")
+                    hora_str = r.fecha_interaccion.astimezone(timezone.get_current_timezone()).strftime("%H:%M") if hasattr(r, 'hora_interaccion') and r.hora_interaccion else r.fecha_interaccion.strftime("%H:%M")
+                    
+                    html += f"""
+                    <div class="recent-item" style="display:flex; align-items:center; gap:12px; padding:8px 10px; background:#f4f7fe; border-radius:12px; transition:.3s;">
+                        <div style="width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:{bg_color}">
+                            <span style="font-size:16px;">{emoji}</span>
+                        </div>
+                        <div style="flex:1;min-width:0;">
+                            <div style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{c_name} — {t_name}</div>
+                            <div style="font-size:11px;font-weight:600;color:#475569;margin-top:2px;">{fecha_str} · {hora_str}</div>
+                        </div>
+                        <span style="font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;background:{badge_style}">{r.estado}</span>
+                    </div>
+                    """
+            else:
+                html = '<div style="text-align:center; padding:20px; color:var(--txt2); font-size:13px; font-weight:600;">No hay interacciones recientes registradas.</div>'
+            return JsonResponse({'status': 'success', 'html': html})
+
+        elif chart_id == 'actividadCategoria':
+            labels = []
+            data = []
+            if filter_val == 'tipo':
+                stats = Interaccion.objects.values('tipo_interaccion__nombre_tipo').annotate(total=Count('id')).order_by('-total')
+                labels = [s['tipo_interaccion__nombre_tipo'] for s in stats]
+                data = [s['total'] for s in stats]
+            elif filter_val == 'contacto':
+                stats = Interaccion.objects.values('contacto__nombre', 'contacto__apellido', 'contacto__razon_social').annotate(total=Count('id')).order_by('-total')[:5]
+                for s in stats:
+                    if s['contacto__nombre']:
+                        labels.append(f"{s['contacto__nombre']} {s['contacto__apellido']}")
+                    else:
+                        labels.append(s['contacto__razon_social'] or "Desconocido")
+                data = [s['total'] for s in stats]
+            elif filter_val == 'dia':
+                from collections import Counter
+                dias_semana = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
+                interacciones = Interaccion.objects.all()
+                counts = Counter([i.fecha_interaccion.weekday() for i in interacciones])
+                labels = dias_semana
+                data = [counts[i] for i in range(7)]
+            return JsonResponse({'status': 'success', 'labels': labels, 'data': data})
+
+        elif chart_id == 'temporal_dia':
+            try:
+                target_date = datetime.datetime.strptime(filter_val, "%Y-%m-%d").date()
+            except Exception:
+                target_date = timezone.now().date()
+            stats = Interaccion.objects.filter(fecha_interaccion__date=target_date).values('fecha_interaccion__hour').annotate(total=Count('id'))
+            hour_map = {h: 0 for h in range(24)}
+            for s in stats:
+                hour_map[s['fecha_interaccion__hour']] = s['total']
+            labels = [f"{h:02d}:00" for h in range(24)]
+            data = [hour_map[h] for h in range(24)]
+            return JsonResponse({'status': 'success', 'labels': labels, 'data': data})
+    
     # Estadísticas generales
     total_contactos = Contacto.objects.count()
     contactos_activos = Contacto.objects.filter(activo=True).count()
@@ -454,6 +589,22 @@ def dashboard(request):
     top_contactos = Contacto.objects.annotate(num_inter=Count('interaccion'))\
         .order_by('-num_inter')[:5]
 
+    # Generar mapeo diario de interacciones para el slider
+    from django.db.models.functions import TruncDate
+    import json
+    current_year = timezone.now().year
+    daily_stats = Interaccion.objects.filter(
+        fecha_interaccion__year=current_year
+    ).annotate(date=TruncDate('fecha_interaccion')).values('date').annotate(total=Count('id'))
+    
+    daily_map = {}
+    for s in daily_stats:
+        if s['date']:
+            date_str = s['date'].strftime('%d/%m')
+            daily_map[date_str] = s['total']
+            
+    daily_map_json = json.dumps(daily_map)
+
     return render(request, "dashboard.html", {
         "usuario_logueado": u,
         "total_contactos": total_contactos,
@@ -478,6 +629,7 @@ def dashboard(request):
         "tendencia_labels": tendencia_labels,
         "tendencia_counts": tendencia_counts,
         "top_contactos": top_contactos,
+        "daily_map_json": daily_map_json,
     })
 
 def contactos(request):
@@ -2479,110 +2631,101 @@ def whatsapp_webhook(request):
             
         return HttpResponse('EVENT_RECEIVED', status=200)
 
+def _enviar_ultramsg(phone, message):
+    """Envía mensaje por UltraMsg. Retorna (success, whatsapp_id, error_msg)."""
+    import urllib.request, urllib.error, json, os
+    instance_id = getattr(settings, 'ULTRAMSG_INSTANCE_ID', '')
+    token = getattr(settings, 'ULTRAMSG_TOKEN', '')
+    if not instance_id or not token:
+        return False, None, "ULTRAMSG_INSTANCE_ID o ULTRAMSG_TOKEN no configurados"
+    _log_whatsapp_debug(f"ULTRAMSG: id_len={len(instance_id)}, token_len={len(token)}, phone={phone}")
+    try:
+        payload = {"to": phone, "body": message}
+        data = json.dumps(payload).encode()
+        url = f"https://api.ultramsg.com/{instance_id}/messages/chat?token={token}"
+        req = urllib.request.Request(url, data=data, method='POST')
+        req.add_header('Content-Type', 'application/json')
+        req.add_header('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36')
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            body = json.loads(resp.read().decode())
+            if body.get("sent"):
+                return True, body.get("messageId", ""), None
+            return False, None, json.dumps(body)
+    except urllib.error.HTTPError as e:
+        detail = e.read().decode() if e.fp else str(e)
+        return False, None, f"UltraMsg 403: {detail}"
+    except Exception as e:
+        return False, None, f"UltraMsg: {e}"
+
+@csrf_exempt
+def ultramsg_webhook(request):
+    """Webhook para recibir mensajes entrantes desde UltraMsg."""
+    import json
+    _log_whatsapp_debug(f"UltraMsg webhook {request.method}")
+    if request.method == "POST":
+        try:
+            raw = request.body.decode('utf-8')
+            _log_whatsapp_debug(f"UltraMsg raw body: {raw}")
+            data = json.loads(raw)
+
+            # UltraMsg puede enviar el mensaje directo o envuelto en {"data": {...}}
+            msg_data = data.get('data', data)
+
+            from_phone = msg_data.get('from', '')
+            text = msg_data.get('body', '')
+            msg_id = msg_data.get('messageId', '')
+            from_me = msg_data.get('fromMe', False)
+
+            _log_whatsapp_debug(f"UltraMsg parsed: from={from_phone}, text={text}, fromMe={from_me}")
+
+            if from_phone and text and not from_me:
+                # Limpiar números
+                raw_number = from_phone.split('@')[0].replace('+', '')
+                contacto = find_contact_by_phone(raw_number)
+                if contacto:
+                    MensajeWhatsApp.objects.create(
+                        contacto=contacto,
+                        texto=text,
+                        direccion='Entrante',
+                        whatsapp_id=msg_id,
+                        estado='leido'
+                    )
+                    _log_whatsapp_debug(f"Saved incoming msg for contact {contacto.id}")
+                else:
+                    _log_whatsapp_debug(f"No contact found for phone: {raw_number}")
+        except Exception as e:
+            _log_whatsapp_debug(f"UltraMsg webhook error: {e}")
+        return HttpResponse('OK', status=200)
+    return HttpResponse('OK', status=200)
+
 @csrf_exempt
 def enviar_mensaje_whatsapp(request, id_contacto):
     id_sesion = request.session.get('user_id')
     if not id_sesion:
         return JsonResponse({'status': 'error', 'message': 'No autenticado'}, status=401)
-        
     usuario_logueado = Usuario.objects.get(id=id_sesion)
     contacto = get_object_or_404(Contacto, id=id_contacto)
-    
     if request.method == "POST":
         texto = request.POST.get('texto', '').strip()
         if not texto:
             return JsonResponse({'status': 'error', 'message': 'El mensaje no puede estar vacío'}, status=400)
-            
-        phone_to_use = contacto.celular or contacto.telefono
-        _log_whatsapp_debug(f"Sending message to contact ID={id_contacto} ({contacto.nombre} {contacto.apellido}): raw_phone='{phone_to_use}', text='{texto}'")
-        if not phone_to_use:
-            _log_whatsapp_debug(f"Error: contact ID={id_contacto} has no phone number")
-            return JsonResponse({'status': 'error', 'message': 'El contacto no tiene un número de celular/teléfono registrado'}, status=400)
-            
-        formatted_phone = format_whatsapp_number(phone_to_use)
-        _log_whatsapp_debug(f"Formatted phone: '{formatted_phone}'")
-        
-        success = False
-        whatsapp_id = None
-        
-        token = getattr(settings, 'WHATSAPP_ACCESS_TOKEN', '')
-        phone_id = getattr(settings, 'WHATSAPP_PHONE_NUMBER_ID', '')
-        
-        _log_whatsapp_debug(f"Credentials status: token_exists={bool(token)}, phone_id='{phone_id}'")
-        
-        if token and token != 'EAAG_PLACEHOLDER' and phone_id and phone_id != 'PHONE_ID_PLACEHOLDER':
-            url = f"https://graph.facebook.com/v18.0/{phone_id}/messages"
-            headers = {
-                "Authorization": f"Bearer {token}",
-                "Content-Type": "application/json"
-            }
-            payload = {
-                "messaging_product": "whatsapp",
-                "recipient_type": "individual",
-                "to": formatted_phone,
-                "type": "text",
-                "text": {"preview_url": False, "body": texto}
-            }
-            _log_whatsapp_debug(f"Meta request payload: {json.dumps(payload)}")
-            req = urllib.request.Request(
-                url,
-                data=json.dumps(payload).encode('utf-8'),
-                headers=headers,
-                method='POST'
-            )
-            try:
-                with urllib.request.urlopen(req, timeout=8) as response:
-                    res_body = response.read().decode('utf-8')
-                    _log_whatsapp_debug(f"Meta API Success Response: status={response.status}, body={res_body}")
-                    if response.status in [200, 201]:
-                        res_data = json.loads(res_body)
-                        whatsapp_id = res_data.get('messages', [{}])[0].get('id')
-                        success = True
-                    else:
-                        print(f"WhatsApp Cloud API Error: {res_body}")
-            except urllib.error.HTTPError as e:
-                res_body = e.read().decode('utf-8') if e.fp else str(e)
-                _log_whatsapp_debug(f"Meta API HTTP Error: code={e.code}, body={res_body}")
-                print(f"WhatsApp Cloud API Error: {res_body}")
-            except Exception as e:
-                _log_whatsapp_debug(f"Meta API request exception: {str(e)}")
-                print(f"WhatsApp Request Exception: {e}")
-        else:
-            _log_whatsapp_debug("Skipping Meta request: credentials not set or placeholder.")
-                
-        if not success:
-            whatsapp_id = f"mock-{uuid.uuid4()}"
-            _log_whatsapp_debug(f"Falling back to mock reply: generated mock id='{whatsapp_id}'")
-            
+        phone = contacto.celular or contacto.telefono
+        if not phone:
+            return JsonResponse({'status': 'error', 'message': 'El contacto no tiene celular/telefono'}, status=400)
+        formatted = format_whatsapp_number(phone)
+        success, wa_id, err = _enviar_ultramsg(formatted, texto)
         MensajeWhatsApp.objects.create(
             contacto=contacto,
             remitente_usuario=usuario_logueado,
             texto=texto,
             direccion='Saliente',
-            whatsapp_id=whatsapp_id,
+            whatsapp_id=wa_id or f"mock-{uuid.uuid4()}",
             estado='enviado'
         )
-        
-        if not success:
-            mock_replies = [
-                f"Hola {usuario_logueado.nombre_usuario}, entiendo perfectamente. Vamos a revisarlo en la Constructora DYCO.",
-                "Recibido. Me parece una excelente propuesta de proyecto.",
-                "Gracias por la información. ¿Cuándo podríamos programar una visita?",
-                "Vale, estaré pendiente de tu llamada."
-            ]
-            import random
-            reply_text = random.choice(mock_replies)
-            
-            MensajeWhatsApp.objects.create(
-                contacto=contacto,
-                texto=reply_text,
-                direccion='Entrante',
-                whatsapp_id=f"mock-reply-{uuid.uuid4()}",
-                estado='leido'
-            )
-            
-        return JsonResponse({'status': 'success', 'whatsapp_id': whatsapp_id})
-        
+        if success:
+            return JsonResponse({'status': 'success', 'message': 'Mensaje enviado por WhatsApp'})
+        else:
+            return JsonResponse({'status': 'warning', 'message': f'Mensaje guardado. Error al enviar: {err}', 'mock': True})
     return JsonResponse({'status': 'error', 'message': 'Método no permitido'}, status=405)
 
 def obtener_mensajes_whatsapp(request, id_contacto):
