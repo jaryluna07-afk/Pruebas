@@ -727,9 +727,101 @@
             align-items: center;
             gap: 10px;
         }
+        /* ── MODO OSCURO (Dark Mode) Manual/Automático ── */
+        [data-theme="dark"] {
+            --bg-principal: #0f172a;
+            --texto: #f8fafc;
+            --texto-secundario: #cbd5e1;
+            --blanco: #1e293b;
+            --sombra: 0 4px 20px rgba(0,0,0,0.4);
+            --gris-borde: #334155;
+        }
+        [data-theme="dark"] body { background: var(--bg-principal); color: var(--texto); }
+        
+        [data-theme="dark"] .panel-izquierdo,
+        [data-theme="dark"] .panel-derecho,
+        [data-theme="dark"] .interaccion-item,
+        [data-theme="dark"] .tabs-secundarias,
+        [data-theme="dark"] .crear-interaccion-form,
+        [data-theme="dark"] .timeline-container,
+        [data-theme="dark"] .tab-btn.activa {
+            background: #1e293b !important;
+            border-color: #334155 !important;
+        }
+
+        [data-theme="dark"] .crear-interaccion-form {
+            background: #0f172a !important;
+        }
+
+        [data-theme="dark"] .tab-btn:hover:not(.activa) { background: #334155 !important; }
+
+        [data-theme="dark"] .interaccion-titulo,
+        [data-theme="dark"] .interaccion-detalle,
+        [data-theme="dark"] .perfil-datos h2,
+        [data-theme="dark"] .info-valor,
+        [data-theme="dark"] .subtab-btn.activa,
+        [data-theme="dark"] .notif-row-header,
+        [data-theme="dark"] .notif-row-item-title {
+            color: #f8fafc !important;
+        }
+
+        [data-theme="dark"] .interaccion-item:hover {
+            border-color: #475569 !important;
+        }
+
+        [data-theme="dark"] .notif-row-item {
+            background: #334155 !important;
+            color: #f8fafc !important;
+        }
+
+        [data-theme="dark"] .row-dropdown {
+            background: #1e293b !important;
+            border-color: #334155 !important;
+        }
+
+        [data-theme="dark"] .hamburger-btn svg {
+            stroke: #f8fafc !important;
+        }
+
+        [data-theme="dark"] .hamburger-btn,
+        [data-theme="dark"] .accion-btn .circulo {
+            background: #0f172a !important;
+            border-color: #334155 !important;
+            color: #f8fafc !important;
+        }
+
+        [data-theme="dark"] .btn-banner {
+            background: #0f172a !important;
+            color: white !important;
+            border: 1px solid #334155 !important;
+        }
+
+        [data-theme="dark"] .entrada-texto {
+            background-color: #0f172a !important;
+            border-color: #334155 !important;
+            color: #f8fafc !important;
+        }
+
+        [data-theme="dark"] #vistaGlobal > div > div[onclick] {
+            background: #1e293b !important;
+            border-color: #334155 !important;
+            color: #f8fafc !important;
+        }
+        [data-theme="dark"] #vistaGlobal > div > div[onclick] div {
+            color: #f8fafc !important;
+        }
+        [data-theme="dark"] #vistaGlobal > div > div[onclick]:hover {
+            border-color: #ef4444 !important;
+        }
     </style>
     <script src="{% static 'js/validaciones.js' %}"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        const savedTheme = localStorage.getItem('temaApp') || 'Modo Sistema';
+        if (savedTheme === 'Modo Oscuro' || (savedTheme === 'Modo Sistema' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.setAttribute('data-theme', 'dark');
+        }
+    </script>
 </head>
 
 <body>

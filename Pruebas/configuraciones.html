@@ -1,8 +1,25 @@
-{% load custom_filters %}
+{% load custom_filters static %}
 <style>
 /* Dropdown overrides for indexing */
-.barra-lateral { overflow: visible !important; }
+/* Force sidebar to show pd-bottom even when overflow:hidden is set by parent pages */
+.barra-lateral { overflow: hidden !important; }
+/* On mobile when scrollable, allow overflow-y scroll so pd-bottom is reachable */
+@media (max-width: 768px) {
+    .barra-lateral { overflow-y: auto !important; overflow-x: hidden !important; }
+}
 .pd-menu { overflow: visible !important; }
+
+
+/* --- MARCA DE AGUA PARA TARJETAS --- */
+.card {
+    background-color: #fff !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 400' width='100%25' height='100%25'%3E%3Cg stroke='%2394a3b8' stroke-width='2.5' fill='none' opacity='0.15'%3E%3C!-- I-Beam --%3E%3Cg transform='translate%2840, 240%29 scale%281.6%29'%3E%3Cpath d='M0,0 L80,0 M30,0 L30,60 M50,0 L50,60 M0,60 L80,60' stroke-width='3'/%3E%3C/g%3E%3C!-- Wrench --%3E%3Cg transform='translate%28280, 50%29 rotate%2845%29 scale%281.3%29'%3E%3Cpath d='M10,25 C10,15 18,8 28,8 C38,8 46,15 46,25 L46,35 L38,35 L38,25 C38,19 33,14 28,14 C23,14 18,19 18,25 L18,35 L10,35 Z'/%3E%3Cpath d='M22,35 L34,35 L34,90 C34,95 30,100 28,100 C26,100 22,95 22,90 Z'/%3E%3C/g%3E%3C!-- Hard Hat --%3E%3Cg transform='translate%28550, 60%29 scale%281.5%29'%3E%3Cpath d='M10,35 C10,15 25,5 45,5 C65,5 80,15 80,35'/%3E%3Cpath d='M0,35 L90,35 C95,35 95,45 90,45 L0,45 C-5,45 -5,35 0,35 Z'/%3E%3C/g%3E%3C!-- Crane Hook --%3E%3Cg transform='translate%28680, 220%29 scale%281.2%29'%3E%3Cpath d='M30,0 L30,40 C30,60 10,60 10,75 C10,95 30,110 50,110 C70,110 90,95 90,75 C90,65 80,55 70,55 C60,55 50,65 50,75' stroke-width='4'/%3E%3Ccircle cx='30' cy='0' r='8'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-size: cover !important;
+    background-position: center !important;
+    background-blend-mode: multiply !important;
+    position: relative;
+}
 
 /* ── Perfil Bottom ── */
 .pd-bottom {
@@ -11,14 +28,14 @@
     padding: 18px 0; cursor: pointer; transition: 0.3s; position: relative;
     flex-shrink: 0;
 }
-.barra-lateral:hover .pd-bottom {
+.barra-lateral:hover .pd-bottom, .barra-lateral.activo .pd-bottom {
     width: 100%; justify-content: flex-start;
     padding: 16px 20px; gap: 12px;
 }
 .pd-bottom .p-info { display: none; opacity: 0; transition: 0.3s; flex: 1; overflow: hidden; }
-.barra-lateral:hover .pd-bottom .p-info { display: block; opacity: 1; }
+.barra-lateral:hover .pd-bottom .p-info, .barra-lateral.activo .pd-bottom .p-info { display: block; opacity: 1; }
 .pd-bottom .chevron-icon { display: none; transition: 0.3s; }
-.barra-lateral:hover .pd-bottom .chevron-icon { display: block; }
+.barra-lateral:hover .pd-bottom .chevron-icon, .barra-lateral.activo .pd-bottom .chevron-icon { display: block; }
 .pd-bottom:hover { background: rgba(255,255,255,0.05); }
 
 .pd-submenu { 
@@ -45,11 +62,17 @@
     --texto-secundario: #94a3b8 !important;
     --sombra: 0 4px 20px rgba(0, 0, 0, 0.4) !important;
     --sombra-suave: 0 4px 20px rgba(0, 0, 0, 0.4) !important;
+
+    /* Override variables used in other pages */
+    --bg: #0f172a !important;
+    --txt: #f8fafc !important;
+    --txt2: #94a3b8 !important;
+    --white: #1e293b !important;
 }
 
 [data-theme="dark"] body {
-    background-color: var(--bg-principal);
-    color: var(--texto);
+    background-color: var(--bg-principal) !important;
+    color: var(--texto) !important;
 }
 
 [data-theme="dark"] input, [data-theme="dark"] select, [data-theme="dark"] textarea {
@@ -59,6 +82,10 @@
 }
 
 [data-theme="dark"] header, 
+[data-theme="dark"] .mobile-header,
+[data-theme="dark"] .card,
+[data-theme="dark"] .hamburger-btn,
+[data-theme="dark"] .btn-sec,
 [data-theme="dark"] [style*="background: white"],
 [data-theme="dark"] [style*="background:white"],
 [data-theme="dark"] [style*="background: #fff"],
@@ -71,6 +98,18 @@
 [data-theme="dark"] .tab-btn.activa {
     background: var(--blanco) !important;
     background-color: var(--blanco) !important;
+    color: var(--texto-principal);
+}
+
+[data-theme="dark"] .card,
+[data-theme="dark"] table th,
+[data-theme="dark"] table td {
+    color: var(--texto-principal) !important;
+    border-color: var(--gris-borde) !important;
+}
+
+[data-theme="dark"] .hamburger-btn svg {
+    stroke: var(--texto-principal) !important;
 }
 
 [data-theme="dark"] h1, [data-theme="dark"] h2, [data-theme="dark"] h3, [data-theme="dark"] h4, [data-theme="dark"] h5, [data-theme="dark"] h6 {
@@ -92,7 +131,7 @@
 }
 
 [data-theme="dark"] .nav-enlace:hover, [data-theme="dark"] .nav-enlace.activo {
-    background-color: var(--primario-soft) !important;
+    background-color: rgba(255, 255, 255, 0.1) !important;
 }
 
 [data-theme="dark"] .check-apariencia {
@@ -114,17 +153,20 @@
 
 /* Modal overlay */
 .mc-overlay {
-    display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-    background: rgba(15, 23, 42, 0.4); backdrop-filter: blur(4px); z-index: 99999;
-    align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s;
+    display: none;
+    position: fixed !important; top: 0 !important; left: 0 !important;
+    width: 100vw !important; height: 100vh !important;
+    background: rgba(15, 23, 42, 0.4) !important; backdrop-filter: blur(4px) !important;
+    z-index: 999999 !important;
+    align-items: center !important; justify-content: center !important;
+    transition: opacity 0.25s ease !important;
 }
-.mc-overlay.visible { display: flex; opacity: 1; }
 .mc-modal {
     background: #ffffff; width: 900px; max-width: 90%; height: 600px; max-height: 90vh;
-    border-radius: 16px; display: flex; overflow: hidden; transform: scale(0.95); transition: transform 0.3s;
+    border-radius: 16px; display: flex; overflow: hidden;
     box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+    transition: transform 0.25s ease;
 }
-.mc-overlay.visible .mc-modal { transform: scale(1); }
 
 .mc-sidebar { width: 250px; background: #f8fafc; padding: 30px 15px; border-right: 1px solid #e2e8f0; }
 
@@ -144,9 +186,12 @@
         border-radius: 8px !important;
     }
     .pd-menu {
-        width: calc(100% - 40px) !important;
-        max-width: 320px !important;
-        left: 20px !important;
+        position: fixed !important;
+        width: 260px !important;
+        max-width: 90% !important;
+        left: 10px !important;
+        bottom: 80px !important;
+        z-index: 10005 !important;
     }
     .mc-modal {
         flex-direction: column !important;
@@ -432,25 +477,76 @@
     }
 
     // --- MODAL LOGIC ---
-    function abrirConfigModal() {
-        document.getElementById('perfilMenu').style.display = 'none';
-        
-        // Append to body to avoid clipping
+    // Move modal and perfilMenu to body to escape any overflow:hidden containers.
+    // Runs immediately (script is included at end of body, DOM already exists),
+    // and also on DOMContentLoaded as a safety net.
+    function _initConfigElements() {
         const modal = document.getElementById('modalConfiguraciones');
-        if(modal.parentNode !== document.body) {
+        if (modal && modal.parentNode !== document.body) {
             document.body.appendChild(modal);
         }
-        
-        modal.classList.add('visible');
+        const pMenu = document.getElementById('perfilMenu');
+        if (pMenu && pMenu.parentNode !== document.body) {
+            document.body.appendChild(pMenu);
+        }
+    }
+    // Run immediately — works when script is at end of body
+    _initConfigElements();
+    // Also attach to DOMContentLoaded as fallback (no-op if already ran)
+    document.addEventListener('DOMContentLoaded', _initConfigElements);
+
+    function abrirConfigModal() {
+        // Hide perfil menu
+        const pMenu = document.getElementById('perfilMenu');
+        if(pMenu) pMenu.style.display = 'none';
+
+        const modal = document.getElementById('modalConfiguraciones');
+        if (!modal) { console.error('modalConfiguraciones not found'); return; }
+
+        // Make sure it's on body
+        if (modal.parentNode !== document.body) {
+            document.body.appendChild(modal);
+        }
+
+        // Apply styles directly — avoids any CSS class conflicts
+        const mc = modal.querySelector('.mc-modal');
+        // Use setProperty with 'important' to override any conflicting CSS
+        const s = modal.style;
+        s.setProperty('display', 'flex', 'important');
+        s.setProperty('position', 'fixed', 'important');
+        s.setProperty('top', '0', 'important');
+        s.setProperty('left', '0', 'important');
+        s.setProperty('width', '100vw', 'important');
+        s.setProperty('height', '100vh', 'important');
+        s.setProperty('z-index', '999999', 'important');
+        s.setProperty('align-items', 'center', 'important');
+        s.setProperty('justify-content', 'center', 'important');
+        s.setProperty('background', 'rgba(15,23,42,0.4)', 'important');
+        s.setProperty('opacity', '0', 'important');
+        s.setProperty('transition', 'opacity 0.25s ease', 'important');
+        if(mc) mc.style.transform = 'scale(0.95)';
+        requestAnimationFrame(function() {
+            requestAnimationFrame(function() {
+                s.setProperty('opacity', '1', 'important');
+                if(mc) mc.style.transform = 'scale(1)';
+            });
+        });
     }
 
     function cerrarConfigModal() {
-        document.getElementById('modalConfiguraciones').classList.remove('visible');
+        const modal = document.getElementById('modalConfiguraciones');
+        if (!modal) return;
+        modal.style.setProperty('opacity', '0', 'important');
+        const mc = modal.querySelector('.mc-modal');
+        if(mc) mc.style.transform = 'scale(0.95)';
+        setTimeout(function() {
+            modal.style.setProperty('display', 'none', 'important');
+        }, 260);
     }
 
     // --- THEME LOGIC ---
-    const savedTheme = localStorage.getItem('temaApp') || 'Modo Sistema';
-    cambiarApariencia(savedTheme, false);
+    let confSavedTheme = localStorage.getItem('temaApp') || 'Modo Sistema';
+    cambiarApariencia(confSavedTheme, false);
 
     function cambiarApariencia(tema, e = null) {
         if(e) e.stopPropagation();
