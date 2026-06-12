@@ -2481,20 +2481,20 @@ def whatsapp_webhook(request):
 
 def _enviar_ultramsg(phone, message):
     """Envía mensaje por UltraMsg. Retorna (success, whatsapp_id, error_msg)."""
-    import urllib.request, urllib.parse, urllib.error, json
+    import urllib.request, urllib.parse, urllib.error, json, os
     instance_id = getattr(settings, 'ULTRAMSG_INSTANCE_ID', '')
     token = getattr(settings, 'ULTRAMSG_TOKEN', '')
     if not instance_id or not token:
         return False, None, "ULTRAMSG_INSTANCE_ID o ULTRAMSG_TOKEN no configurados"
+    _log_whatsapp_debug(f"ULTRAMSG: id_len={len(instance_id)}, token_len={len(token)}, phone={phone}, text='{message}'")
     try:
-        payload = {"token": token, "to": phone, "body": message}
-        data = json.dumps(payload).encode()
+        data = urllib.parse.urlencode({"token": token, "to": phone, "body": message}).encode()
         req = urllib.request.Request(
             f"https://api.ultramsg.com/{instance_id}/messages/chat",
             data=data,
             method='POST'
         )
-        req.add_header('Content-Type', 'application/json')
+        req.add_header('Content-Type', 'application/x-www-form-urlencoded')
         with urllib.request.urlopen(req, timeout=10) as resp:
             body = json.loads(resp.read().decode())
             if body.get("sent"):
