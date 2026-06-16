@@ -106,9 +106,12 @@ def registro_view(request):
                         f'Hola {usuario_sin_verificar.nombre_usuario},\n\nTu nuevo código de verificación es: {pin}\n\nIntroduce este código en la web para activar tu cuenta.',
                         [usuario_sin_verificar.email]
                     )
+                    success_msg = "Te hemos reenviado un nuevo código de verificación. Revisa tu correo."
+                    if getattr(settings, 'DEBUG', False):
+                        success_msg += f" (Modo Desarrollo - Código: {pin})"
                     print(f"\n[SOPORTE] Código de verificación (reenvío) para {usuario_sin_verificar.nombre_usuario}: {pin}\n")
                     return render(request, "registro.html", {
-                        "success": "Te hemos reenviado un nuevo código de verificación. Revisa tu correo.",
+                        "success": success_msg,
                         "error": email_err or "",
                         "roles": roles,
                         "show_pin": True,
@@ -134,9 +137,12 @@ def registro_view(request):
                         f'Hola {nombre},\n\nTu código para activar tu cuenta es: {pin}\n\nIntroduce este código en la web para terminar tu registro.',
                         [email]
                     )
+                    success_msg = "Registro exitoso. Introduce el código de 6 dígitos que enviamos a tu correo para activar tu cuenta."
+                    if getattr(settings, 'DEBUG', False):
+                        success_msg += f" (Modo Desarrollo - Código: {pin})"
                     print(f"\n[SOPORTE] Código de verificación para {nombre}: {pin}\n")
                     return render(request, "registro.html", {
-                        "success": "Registro exitoso. Introduce el código de 6 dígitos que enviamos a tu correo para activar tu cuenta.",
+                        "success": success_msg,
                         "error": email_err or "",
                         "roles": roles,
                         "show_pin": True,
@@ -188,9 +194,12 @@ def reenviar_pin(request):
                 f'Hola {u.nombre_usuario},\n\nTu nuevo código de verificación es: {pin}\n\nEste código expirará en 5 minutos.',
                 [u.email]
             )
+            success_msg = "Se ha reenviado un nuevo código a tu correo."
+            if getattr(settings, 'DEBUG', False):
+                success_msg += f" (Modo Desarrollo - Código: {pin})"
             print(f"\n[SOPORTE] Nuevo PIN reenviado para {u.nombre_usuario}: {pin}\n")
             return render(request, "registro.html", {
-                "success": "Se ha reenviado un nuevo código a tu correo.",
+                "success": success_msg,
                 "roles": Rol.objects.all(),
                 "show_pin": True,
                 "email_reg": email
@@ -312,7 +321,10 @@ def recuperar_contrasena_view(request):
                     # Atajo para desarrollo: imprimir el código en la consola
                     print(f"\n[SOPORTE] Código de recuperación para {u.nombre_usuario}: {pin}\n")
                     
-                    success = f"¡Código generado! Revisa tu correo (o la consola de este servidor). Introduce el código de 6 dígitos para continuar."
+                    success_msg = "¡Código generado! Revisa tu correo. Introduce el código de 6 dígitos para continuar."
+                    if getattr(settings, 'DEBUG', False):
+                        success_msg += f" (Modo Desarrollo - Código: {pin})"
+                    success = success_msg
                     step = 2 # Pasar al paso de introducir el PIN
                     request.session['resetting_email'] = email
                 except Exception as e:
