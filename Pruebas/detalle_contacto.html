@@ -2905,6 +2905,10 @@
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                 <span class="nav-text">Gestión de Usuarios</span>
             </a>
+            <a href="{% url 'proyectos' %}" class="nav-enlace">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+                <span class="nav-text">Gestión de Proyectos</span>
+            </a>
             {% endif %}
             <a href="{% url 'incidencias' %}" class="nav-enlace">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
@@ -4728,11 +4732,11 @@
                                 <div class="email-text-content">{{ inter.detalle_actividad|safe }}</div>
                                 {% if inter.tipo_comunicacion == 'Entrante' %}
                                 <div class="email-reply-forward-actions" style="margin-top: 15px; display: flex; gap: 12px;">
-                                    <button type="button" class="btn-email-action reply" onclick="responderEmail({{ inter.id }}, '{{ inter.asunto|default:''|escapejs }}')">
+                                    <button type="button" class="btn-email-action reply" data-id="{{ inter.id }}" data-asunto="{{ inter.asunto|default:'' }}" onclick="responderEmail(this)">
                                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px; vertical-align: middle;"><polyline points="9 17 4 12 9 7"></polyline><path d="M20 18v-2a4 4 0 0 0-4-4H4"></path></svg>
                                         Responder
                                     </button>
-                                    <button type="button" class="btn-email-action forward" onclick="reenviarEmail({{ inter.id }}, '{{ inter.asunto|default:''|escapejs }}', '{{ inter.detalle_actividad|escapejs }}')">
+                                    <button type="button" class="btn-email-action forward" data-id="{{ inter.id }}" data-asunto="{{ inter.asunto|default:'' }}" data-detalle="{{ inter.detalle_actividad }}" onclick="reenviarEmail(this)">
                                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px; vertical-align: middle;"><polyline points="15 17 20 12 15 7"></polyline><path d="M4 18v-2a4 4 0 0 1 4-4h12"></path></svg>
                                         Reenviar
                                     </button>
@@ -5531,11 +5535,9 @@
                     <label style="display: block; font-size: 14px; font-weight: 700; color: #1e293b; margin-bottom: 8px;">Tipo de Proyecto / Servicio</label>
                     <select name="tipo_proyecto" id="tipo_proyecto_selector" class="entrada-texto" onchange="toggleOtroProyecto(this.value)" required>
                         <option value="">Selecciona el tipo de proyecto</option>
-                        <option value="Construcción desde cero en terreno propio">Construcción desde cero en terreno propio</option>
-                        <option value="Diseño y construcción de casas personalizadas">Diseño y construcción de casas personalizadas</option>
-                        <option value="Trámites legales y licencias">Trámites legales y licencias</option>
-                        <option value="Adecuaciones o remodelaciones">Adecuaciones o remodelaciones</option>
-                        <option value="Apartamento">Apartamento</option>
+                        {% for tp in tipos_proyecto %}
+                        <option value="{{ tp.id }}">{{ tp.nombre_tipo }}</option>
+                        {% endfor %}
                         <option value="otros">Otros</option>
                     </select>
                 </div>
@@ -5671,7 +5673,16 @@
             abrirModal('modalCorreo');
         }
 
-        function responderEmail(id, asunto) {
+        function responderEmail(btnOrId, asunto = '') {
+            let id, finalAsunto;
+            if (typeof btnOrId === 'object' && btnOrId !== null) {
+                id = btnOrId.getAttribute('data-id');
+                finalAsunto = btnOrId.getAttribute('data-asunto');
+            } else {
+                id = btnOrId;
+                finalAsunto = asunto;
+            }
+
             const listContainer = document.getElementById('composerAttachmentsList');
             if (listContainer) listContainer.innerHTML = '';
             const attachmentsContainer = document.getElementById('mailHiddenAttachments');
@@ -5680,7 +5691,7 @@
             document.getElementById('mailTitle').innerText = "Responder Correo";
             
             // Asunto con prefijo RE:
-            let nuevoAsunto = asunto;
+            let nuevoAsunto = finalAsunto || '';
             if (!nuevoAsunto.toLowerCase().startsWith('re:')) {
                 nuevoAsunto = 'Re: ' + nuevoAsunto;
             }
@@ -5698,7 +5709,18 @@
             abrirModal('modalCorreo');
         }
 
-        function reenviarEmail(id, asunto, detalle) {
+        function reenviarEmail(btnOrId, asunto = '', detalle = '') {
+            let id, finalAsunto, finalDetalle;
+            if (typeof btnOrId === 'object' && btnOrId !== null) {
+                id = btnOrId.getAttribute('data-id');
+                finalAsunto = btnOrId.getAttribute('data-asunto');
+                finalDetalle = btnOrId.getAttribute('data-detalle');
+            } else {
+                id = btnOrId;
+                finalAsunto = asunto;
+                finalDetalle = detalle;
+            }
+
             const listContainer = document.getElementById('composerAttachmentsList');
             if (listContainer) listContainer.innerHTML = '';
             const attachmentsContainer = document.getElementById('mailHiddenAttachments');
@@ -5714,21 +5736,20 @@
             mailPara.placeholder = "destinatario@correo.com";
             
             // Asunto con prefijo Fwd:
-            let nuevoAsunto = asunto;
+            let nuevoAsunto = finalAsunto || '';
             if (!nuevoAsunto.toLowerCase().startsWith('fwd:')) {
                 nuevoAsunto = 'Fwd: ' + nuevoAsunto;
             }
             document.getElementById('mailAsunto').value = nuevoAsunto;
             
             // Copiar el mensaje original limpio
-            const originalLimpio = detalle.replace(/\\n/g, '\n');
-            const cabeceraReenvio = `\n\n---------- Mensaje reenviado ----------\nDe: {{ c.correo }}\nAsunto: ${asunto}\n\n${originalLimpio}`;
+            const originalLimpio = (finalDetalle || '').replace(/\\n/g, '\n');
+            const cabeceraReenvio = `\n\n---------- Mensaje reenviado ----------\nDe: {{ c.correo }}\nAsunto: ${finalAsunto || ''}\n\n${originalLimpio}`;
 
             document.getElementById('mailDetalleDiv').innerHTML = cabeceraReenvio.replace(/\n/g, '<br>');
             
             abrirModal('modalCorreo');
         }
-
 
         // --- Utilidades del editor de correo ---
         function toggleFormato() {

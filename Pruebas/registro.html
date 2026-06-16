@@ -106,7 +106,9 @@
                         </label>
                         <div class="field-wrap">
                             <input type="text" name="usuario" id="usuario" class="field-input"
-                                placeholder="Ej: juan.perez" required autocomplete="username">
+                                placeholder="Ej: Juan Perez" required autocomplete="username"
+                                pattern="[A-Za-zÁéíóúüñÁÉÍÓÚÜÑ\s]+" title="El nombre de usuario solo debe contener letras y espacios."
+                                oninput="this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]/g, '')">
                         </div>
                     </div>
 

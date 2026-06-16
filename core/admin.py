@@ -1,7 +1,8 @@
 from django.contrib import admin
 from .models import (
     Rol, Usuario, TipoIdentificacion, TipoContacto, 
-    TipoInteraccion, Contacto, Interaccion, Compromiso
+    TipoInteraccion, Contacto, Interaccion, Compromiso,
+    TipoProyecto, Proyecto
 )
 
 # Registro básico de tus modelos
@@ -13,3 +14,5 @@ admin.site.register(TipoInteraccion)
 admin.site.register(Contacto)
 admin.site.register(Interaccion)
 admin.site.register(Compromiso)
+admin.site.register(TipoProyecto)
+admin.site.register(Proyecto)

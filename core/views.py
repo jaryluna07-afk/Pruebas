@@ -14,7 +14,7 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.db.models import Q, Count, Sum
 from django.db.models.functions import TruncMonth
-from .models import Contacto, TipoContacto, TipoIdentificacion, Interaccion, TipoInteraccion, Usuario, Rol, FirmaDigital, MensajeWhatsApp
+from .models import Contacto, TipoContacto, TipoIdentificacion, Interaccion, TipoInteraccion, Usuario, Rol, FirmaDigital, MensajeWhatsApp, TipoProyecto, Proyecto
 
 def enviar_correo_seguro(asunto, texto_plano, destinatarios, html_content=None, attachments=None):
     import json, urllib.request, urllib.error, re, base64, uuid
@@ -76,61 +76,72 @@ def registro_view(request):
         Rol.objects.get_or_create(nombre_rol="Usuario")
         
         if request.method == "POST":
-            nombre = request.POST.get("usuario")
-            email = request.POST.get("email")
+            nombre = (request.POST.get("usuario") or "").strip()
+            email = (request.POST.get("email") or "").strip()
+            identificacion = (request.POST.get("identificacion") or "").strip()
             
             rol_obj = Rol.objects.filter(nombre_rol="Usuario").first()
             rol_id = rol_obj.id if rol_obj else None
             
             passw = request.POST.get("password")
             
-            usuario_sin_verificar = Usuario.objects.filter(email=email, activo=False).first()
-            if usuario_sin_verificar:
-                import random
-                pin = str(random.randint(100000, 999999))
-                usuario_sin_verificar.token_verificacion = pin
-                usuario_sin_verificar.save()
-                email_err = enviar_correo_seguro(
-                    'Verifica tu cuenta (reenvío) - CRM',
-                    f'Hola {usuario_sin_verificar.nombre_usuario},\n\nTu nuevo código de verificación es: {pin}\n\nIntroduce este código en la web para activar tu cuenta.',
-                    [usuario_sin_verificar.email]
-                )
-                print(f"\n[SOPORTE] Código de verificación (reenvío) para {usuario_sin_verificar.nombre_usuario}: {pin}\n")
-                return render(request, "registro.html", {
-                    "success": "Te hemos reenviado un nuevo código de verificación. Revisa tu correo.",
-                    "error": email_err or "",
-                    "roles": roles,
-                    "show_pin": True,
-                    "email_reg": email
-                })
-            elif Usuario.objects.filter(nombre_usuario=nombre).exists():
-                error = "Este nombre de usuario ya está ocupado."
-            elif Usuario.objects.filter(email=email, activo=True).exists():
-                error = "Este correo electrónico ya está registrado y verificado."
+            import re
+            if not nombre:
+                error = "El nombre de usuario es obligatorio."
+            elif not re.match(r'^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$', nombre):
+                error = "El nombre de usuario solo debe contener letras y nombres coherentes."
+            elif not identificacion:
+                error = "El número de identificación es obligatorio."
+            elif not re.match(r'^\d+$', identificacion):
+                error = "El número de identificación solo puede contener números."
             else:
-                import random
-                pin = str(random.randint(100000, 999999))
-                Usuario.objects.create(
-                    nombre_usuario=nombre,
-                    email=email,
-                    rol_id=rol_id,
-                    password_hash=passw,
-                    activo=False,
-                    token_verificacion=pin
-                )
-                email_err = enviar_correo_seguro(
-                    'Bienvenido al CRM - Código de Verificación',
-                    f'Hola {nombre},\n\nTu código para activar tu cuenta es: {pin}\n\nIntroduce este código en la web para terminar tu registro.',
-                    [email]
-                )
-                print(f"\n[SOPORTE] Código de verificación para {nombre}: {pin}\n")
-                return render(request, "registro.html", {
-                    "success": "Registro exitoso. Introduce el código de 6 dígitos que enviamos a tu correo para activar tu cuenta.",
-                    "error": email_err or "",
-                    "roles": roles,
-                    "show_pin": True,
-                    "email_reg": email
-                })
+                usuario_sin_verificar = Usuario.objects.filter(email=email, activo=False).first()
+                if usuario_sin_verificar:
+                    import random
+                    pin = str(random.randint(100000, 999999))
+                    usuario_sin_verificar.token_verificacion = pin
+                    usuario_sin_verificar.save()
+                    email_err = enviar_correo_seguro(
+                        'Verifica tu cuenta (reenvío) - CRM',
+                        f'Hola {usuario_sin_verificar.nombre_usuario},\n\nTu nuevo código de verificación es: {pin}\n\nIntroduce este código en la web para activar tu cuenta.',
+                        [usuario_sin_verificar.email]
+                    )
+                    print(f"\n[SOPORTE] Código de verificación (reenvío) para {usuario_sin_verificar.nombre_usuario}: {pin}\n")
+                    return render(request, "registro.html", {
+                        "success": "Te hemos reenviado un nuevo código de verificación. Revisa tu correo.",
+                        "error": email_err or "",
+                        "roles": roles,
+                        "show_pin": True,
+                        "email_reg": email
+                    })
+                elif Usuario.objects.filter(nombre_usuario=nombre).exists():
+                    error = "Este nombre de usuario ya está ocupado."
+                elif Usuario.objects.filter(email=email, activo=True).exists():
+                    error = "Este correo electrónico ya está registrado y verificado."
+                else:
+                    import random
+                    pin = str(random.randint(100000, 999999))
+                    Usuario.objects.create(
+                        nombre_usuario=nombre,
+                        email=email,
+                        rol_id=rol_id,
+                        password_hash=passw,
+                        activo=False,
+                        token_verificacion=pin
+                    )
+                    email_err = enviar_correo_seguro(
+                        'Bienvenido al CRM - Código de Verificación',
+                        f'Hola {nombre},\n\nTu código para activar tu cuenta es: {pin}\n\nIntroduce este código en la web para terminar tu registro.',
+                        [email]
+                    )
+                    print(f"\n[SOPORTE] Código de verificación para {nombre}: {pin}\n")
+                    return render(request, "registro.html", {
+                        "success": "Registro exitoso. Introduce el código de 6 dígitos que enviamos a tu correo para activar tu cuenta.",
+                        "error": email_err or "",
+                        "roles": roles,
+                        "show_pin": True,
+                        "email_reg": email
+                    })
     except Exception as e:
         error = f"Error interno: {e}"
         traceback.print_exc()
@@ -253,20 +264,20 @@ def login_view(request):
         pass_input = request.POST.get("password", "")
         
         u = Usuario.objects.filter(
-            Q(nombre_usuario__iexact=user_input) | Q(email__iexact=user_input),
-            password_hash=pass_input
+            Q(nombre_usuario__iexact=user_input) | Q(email__iexact=user_input)
         ).first()
         
-        if u:
-            if u.activo:
-                request.session['user_id'] = u.id
-                request.session['user_name'] = u.nombre_usuario
-                request.session['rol_name'] = u.rol.nombre_rol
-                return redirect('/')
-            else:
-                error = "Tu cuenta se encuentra inactiva o sin verificar. Revisa tu correo o contacta al administrador."
+        if not u:
+            error = "El usuario o correo electrónico no está registrado."
+        elif u.password_hash != pass_input:
+            error = "Contraseña incorrecta."
+        elif not u.activo:
+            error = "Tu cuenta se encuentra inactiva o sin verificar. Revisa tu correo o contacta al administrador."
         else:
-            error = "Cuidado! Datos o rol incorrectos."
+            request.session['user_id'] = u.id
+            request.session['user_name'] = u.nombre_usuario
+            request.session['rol_name'] = u.rol.nombre_rol
+            return redirect('/')
 
     roles = Rol.objects.all()
     return render(request, "login.html", {"roles": roles, "error": error})
@@ -665,8 +676,11 @@ def contactos(request):
         razon_social = request.POST.get("razon_social")
         nombre_rep_legal = request.POST.get("nombre_rep_legal")
         
-        tipo_proyecto = request.POST.get("tipo_proyecto")
-        proyecto_nombre = request.POST.get("proyecto_nombre")
+        tipo_proyecto_id = request.POST.get("tipo_proyecto")
+        proyecto_nombre_id = request.POST.get("proyecto_nombre")
+        tipo_proyecto_id = int(tipo_proyecto_id) if tipo_proyecto_id and tipo_proyecto_id.isdigit() else None
+        proyecto_nombre_id = int(proyecto_nombre_id) if proyecto_nombre_id and proyecto_nombre_id.isdigit() else None
+
         torre = request.POST.get("torre")
         apartamento = request.POST.get("apartamento")
         tipo_contrato = request.POST.get("tipo_contrato")
@@ -694,7 +708,7 @@ def contactos(request):
                     usuario_asignado=usuario_logueado, nombre=nombre,
                     apellido=apellido, razon_social=razon_social, 
                     nombre_rep_legal=nombre_rep_legal, activo=True,
-                    tipo_proyecto=tipo_proyecto, proyecto_nombre=proyecto_nombre,
+                    tipo_proyecto_id=tipo_proyecto_id, proyecto_nombre_id=proyecto_nombre_id,
                     torre=torre, apartamento=apartamento, tipo_contrato=tipo_contrato,
                     ocupacion=ocupacion, otra_ocupacion=otra_ocupacion,
                     fecha_nacimiento=fecha_nacimiento, edad=edad,
@@ -714,16 +728,8 @@ def contactos(request):
             Q(correo__icontains=query)
         )
 
-    # Lista estática de proyectos activos
-    proyectos = [
-        {"id": 1, "nombre_proyecto": "Satori (Ibagué)"},
-        {"id": 2, "nombre_proyecto": "Mandala (Ibagué)"},
-        {"id": 3, "nombre_proyecto": "Selvia (Armenia)"},
-        {"id": 4, "nombre_proyecto": "Ícono 60 (Ibagué)"},
-        {"id": 5, "nombre_proyecto": "Ática (Ibagué)"},
-        {"id": 6, "nombre_proyecto": "Vivalto (Ibagué)"},
-        {"id": 7, "nombre_proyecto": "Morada Pinaos (Ibagué)"},
-    ]
+    proyectos = Proyecto.objects.select_related('tipo_proyecto').all()
+    tipos_proyecto = TipoProyecto.objects.all()
 
     return render(request, "index.html", {
         "activos": activos,
@@ -731,6 +737,7 @@ def contactos(request):
         "tipos_contacto": TipoContacto.objects.all(),
         "tipos_doc": TipoIdentificacion.objects.all(),
         "proyectos": proyectos,
+        "tipos_proyecto": tipos_proyecto,
         "error": error,
         "usuario_logueado": usuario_logueado,
         "query": query
@@ -768,8 +775,11 @@ def nuevo_contacto_mobile(request):
         razon_social = request.POST.get("razon_social")
         nombre_rep_legal = request.POST.get("nombre_rep_legal")
         
-        tipo_proyecto = request.POST.get("tipo_proyecto")
-        proyecto_nombre = request.POST.get("proyecto_nombre")
+        tipo_proyecto_id = request.POST.get("tipo_proyecto")
+        proyecto_nombre_id = request.POST.get("proyecto_nombre")
+        tipo_proyecto_id = int(tipo_proyecto_id) if tipo_proyecto_id and tipo_proyecto_id.isdigit() else None
+        proyecto_nombre_id = int(proyecto_nombre_id) if proyecto_nombre_id and proyecto_nombre_id.isdigit() else None
+
         torre = request.POST.get("torre")
         apartamento = request.POST.get("apartamento")
         tipo_contrato = request.POST.get("tipo_contrato")
@@ -797,7 +807,7 @@ def nuevo_contacto_mobile(request):
                     usuario_asignado=usuario_logueado, nombre=nombre,
                     apellido=apellido, razon_social=razon_social, 
                     nombre_rep_legal=nombre_rep_legal, activo=True,
-                    tipo_proyecto=tipo_proyecto, proyecto_nombre=proyecto_nombre,
+                    tipo_proyecto_id=tipo_proyecto_id, proyecto_nombre_id=proyecto_nombre_id,
                     torre=torre, apartamento=apartamento, tipo_contrato=tipo_contrato,
                     ocupacion=ocupacion, otra_ocupacion=otra_ocupacion,
                     fecha_nacimiento=fecha_nacimiento, edad=edad,
@@ -806,20 +816,14 @@ def nuevo_contacto_mobile(request):
                 return redirect('/contactos/')
             except Exception as e: error = f"Error: {e}"
 
-    proyectos = [
-        {"id": 1, "nombre_proyecto": "Satori (Ibagué)"},
-        {"id": 2, "nombre_proyecto": "Mandala (Ibagué)"},
-        {"id": 3, "nombre_proyecto": "Selvia (Armenia)"},
-        {"id": 4, "nombre_proyecto": "Ícono 60 (Ibagué)"},
-        {"id": 5, "nombre_proyecto": "Ática (Ibagué)"},
-        {"id": 6, "nombre_proyecto": "Vivalto (Ibagué)"},
-        {"id": 7, "nombre_proyecto": "Morada Pinaos (Ibagué)"},
-    ]
+    proyectos = Proyecto.objects.select_related('tipo_proyecto').all()
+    tipos_proyecto = TipoProyecto.objects.all()
 
     return render(request, "nuevo_contacto.html", {
         "tipos_contacto": TipoContacto.objects.all(),
         "tipos_doc": TipoIdentificacion.objects.all(),
         "proyectos": proyectos,
+        "tipos_proyecto": tipos_proyecto,
         "error": error,
         "usuario_logueado": usuario_logueado
     })
@@ -861,8 +865,10 @@ def editar_contacto(request, id_contacto):
             p.razon_social = request.POST.get("razon_social")
             p.nombre_rep_legal = request.POST.get("nombre_rep_legal")
             
-        p.tipo_proyecto = request.POST.get("tipo_proyecto")
-        p.proyecto_nombre = request.POST.get("proyecto_nombre")
+        tipo_proyecto_id = request.POST.get("tipo_proyecto")
+        proyecto_nombre_id = request.POST.get("proyecto_nombre")
+        p.tipo_proyecto_id = int(tipo_proyecto_id) if tipo_proyecto_id and tipo_proyecto_id.isdigit() else None
+        p.proyecto_nombre_id = int(proyecto_nombre_id) if proyecto_nombre_id and proyecto_nombre_id.isdigit() else None
         p.torre = request.POST.get("torre")
         p.apartamento = request.POST.get("apartamento")
         p.tipo_contrato = request.POST.get("tipo_contrato")
@@ -904,22 +910,15 @@ def editar_contacto(request, id_contacto):
             p.save()
             return redirect('/')
                 
-    # Lista estática de proyectos
-    proyectos = [
-        {"id": 1, "nombre_proyecto": "Satori (Ibagué)"},
-        {"id": 2, "nombre_proyecto": "Mandala (Ibagué)"},
-        {"id": 3, "nombre_proyecto": "Selvia (Armenia)"},
-        {"id": 4, "nombre_proyecto": "Ícono 60 (Ibagué)"},
-        {"id": 5, "nombre_proyecto": "Ática (Ibagué)"},
-        {"id": 6, "nombre_proyecto": "Vivalto (Ibagué)"},
-        {"id": 7, "nombre_proyecto": "Morada Pinaos (Ibagué)"},
-    ]
+    proyectos = Proyecto.objects.select_related('tipo_proyecto').all()
+    tipos_proyecto = TipoProyecto.objects.all()
 
     return render(request, "editar_contacto.html", {
         "c": p, "error": error, 
         "tipos_contacto": TipoContacto.objects.all(),
         "tipos_doc": TipoIdentificacion.objects.all(),
         "proyectos": proyectos,
+        "tipos_proyecto": tipos_proyecto,
         "usuario_logueado": usuario_logueado
     })
 
@@ -1551,6 +1550,12 @@ def detalle_contacto(request, id_contacto):
             tipo_proyecto = request.POST.get('tipo_proyecto', '')
             if tipo_proyecto == 'otros':
                 tipo_proyecto = request.POST.get('tipo_proyecto_otro', '')
+            elif tipo_proyecto.isdigit():
+                try:
+                    tp = TipoProyecto.objects.get(id=tipo_proyecto)
+                    tipo_proyecto = tp.nombre_tipo
+                except TipoProyecto.DoesNotExist:
+                    pass
             asunto = tipo_proyecto or 'Otro'
             if fase_actividad:
                 detalle = f"[{fase_actividad}] {detalle}"
@@ -2218,6 +2223,7 @@ def detalle_contacto(request, id_contacto):
         "interacciones_asc": interacciones_asc,
         "interacciones_roots": interacciones_roots,
         "tipos": tipos_interaccion,
+        "tipos_proyecto": TipoProyecto.objects.all(),
         "usuario_logueado": usuario_logueado,
         "stats_json": stats_json,
         "available_years": available_years,
@@ -2286,23 +2292,22 @@ def ajax_sincronizar_correos(request, id_contacto):
 
         reply_forward_html = ''
         if inter.tipo_comunicacion == 'Entrante':
-            asunto_val = inter.asunto if inter.asunto else ''
-            asunto_js = asunto_val.replace("'", "\\'").replace('"', '\\"')
-            detalle_js = detalle_full.replace("'", "\\'").replace('"', '\\"').replace("\n", "\\n").replace("\r", "")
+            import html
+            asunto_esc = html.escape(inter.asunto or '')
+            detalle_esc = html.escape(detalle_full)
             reply_forward_html = f"""
-                <div class="email-reply-forward-actions" style="margin-top: 15px; display: flex; gap: 12px;">
-                    <button type="button" class="btn-email-action reply" onclick="responderEmail({inter.id}, '{asunto_js}')">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px; vertical-align: middle;"><polyline points="9 17 4 12 9 7"></polyline><path d="M20 18v-2a4 4 0 0 0-4-4H4"></path></svg>
-                        Responder
-                    </button>
-                    <button type="button" class="btn-email-action forward" onclick="reenviarEmail({inter.id}, '{asunto_js}', '{detalle_js}')">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px; vertical-align: middle;"><polyline points="15 17 20 12 15 7"></polyline><path d="M4 18v-2a4 4 0 0 1 4-4h12"></path></svg>
-                        Reenviar
-                    </button>
-                </div>"""
+            <div class="email-reply-forward-actions" style="margin-top: 15px; display: flex; gap: 12px;">
+                <button type="button" class="btn-email-action reply" data-id="{inter.id}" data-asunto="{asunto_esc}" onclick="responderEmail(this)">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px; vertical-align: middle;"><polyline points="9 17 4 12 9 7"></polyline><path d="M20 18v-2a4 4 0 0 0-4-4H4"></path></svg>
+                    Responder
+                </button>
+                <button type="button" class="btn-email-action forward" data-id="{inter.id}" data-asunto="{asunto_esc}" data-detalle="{detalle_esc}" onclick="reenviarEmail(this)">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px; vertical-align: middle;"><polyline points="15 17 20 12 15 7"></polyline><path d="M4 18v-2a4 4 0 0 1 4-4h12"></path></svg>
+                    Reenviar
+                </button>
+            </div>"""
 
-        html_correos += f'''
-        <div class="email-card">
+        html_correos += f'''<div class="email-card">
             <div class="email-card-header" onclick="toggleEmail({inter.id})">
                 <div class="email-subject-row">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
@@ -3002,4 +3007,112 @@ def incidencias_view(request):
     u = Usuario.objects.get(id=user_id)
     return render(request, 'incidencias.html', {
         'usuario_logueado': u,
+    })
+
+def proyectos_view(request):
+    """Vista de gestión de proyectos — solo para administradores."""
+    user_id = request.session.get('user_id')
+    if not user_id:
+        return redirect('/login/')
+    u = Usuario.objects.get(id=user_id)
+    if u.rol.nombre_rol != 'Administrador':
+        return redirect('/')
+
+    error = ""
+    success_msg = ""
+
+    if request.method == "POST":
+        accion = request.POST.get("accion")
+        if accion == "crear_proyecto":
+            nombre = request.POST.get("nombre_proyecto")
+            descripcion = request.POST.get("descripcion")
+            tipo_id = request.POST.get("tipo_proyecto")
+            if not nombre or not tipo_id:
+                error = "El nombre del proyecto y el tipo son obligatorios."
+            else:
+                try:
+                    tipo_obj = TipoProyecto.objects.get(id=tipo_id)
+                    Proyecto.objects.create(
+                        tipo_proyecto=tipo_obj,
+                        nombre_proyecto=nombre,
+                        descripcion=descripcion
+                    )
+                    success_msg = f"Proyecto '{nombre}' creado correctamente."
+                except Exception as e:
+                    error = f"Error al crear proyecto: {e}"
+        elif accion == "eliminar_proyecto":
+            pid = request.POST.get("proyecto_id")
+            try:
+                p = Proyecto.objects.get(id=pid)
+                p_nombre = p.nombre_proyecto
+                p.delete()
+                success_msg = f"Proyecto '{p_nombre}' eliminado correctamente."
+            except Exception as e:
+                error = f"Error al eliminar proyecto: {e}"
+        elif accion == "modificar_proyecto":
+            pid = request.POST.get("proyecto_id")
+            nombre = request.POST.get("nombre_proyecto")
+            descripcion = request.POST.get("descripcion")
+            tipo_id = request.POST.get("tipo_proyecto")
+            if not nombre or not tipo_id:
+                error = "El nombre del proyecto y el tipo son obligatorios."
+            else:
+                try:
+                    p = Proyecto.objects.get(id=pid)
+                    tipo_obj = TipoProyecto.objects.get(id=tipo_id)
+                    p.nombre_proyecto = nombre
+                    p.tipo_proyecto = tipo_obj
+                    p.descripcion = descripcion
+                    p.save()
+                    success_msg = f"Proyecto '{nombre}' modificado correctamente."
+                except Exception as e:
+                    error = f"Error al modificar proyecto: {e}"
+        elif accion == "crear_tipo_proyecto":
+            nombre = request.POST.get("nombre_tipo")
+            descripcion = request.POST.get("descripcion")
+            if not nombre:
+                error = "El nombre del tipo de proyecto es obligatorio."
+            else:
+                try:
+                    TipoProyecto.objects.create(
+                        nombre_tipo=nombre,
+                        descripcion=descripcion
+                    )
+                    success_msg = f"Tipo de proyecto '{nombre}' creado correctamente."
+                except Exception as e:
+                    error = f"Error al crear tipo de proyecto: {e}"
+        elif accion == "eliminar_tipo_proyecto":
+            tid = request.POST.get("tipo_id")
+            try:
+                t = TipoProyecto.objects.get(id=tid)
+                t_nombre = t.nombre_tipo
+                t.delete()
+                success_msg = f"Tipo de proyecto '{t_nombre}' eliminado correctamente."
+            except Exception as e:
+                error = f"Error al eliminar tipo de proyecto: {e}"
+        elif accion == "modificar_tipo_proyecto":
+            tid = request.POST.get("tipo_id")
+            nombre = request.POST.get("nombre_tipo")
+            descripcion = request.POST.get("descripcion")
+            if not nombre:
+                error = "El nombre del tipo de proyecto es obligatorio."
+            else:
+                try:
+                    t = TipoProyecto.objects.get(id=tid)
+                    t.nombre_tipo = nombre
+                    t.descripcion = descripcion
+                    t.save()
+                    success_msg = f"Tipo de proyecto '{nombre}' modificado correctamente."
+                except Exception as e:
+                    error = f"Error al modificar tipo de proyecto: {e}"
+
+    proyectos = Proyecto.objects.select_related('tipo_proyecto').order_by('tipo_proyecto__nombre_tipo', 'nombre_proyecto')
+    tipos_proyecto = TipoProyecto.objects.all()
+
+    return render(request, 'proyectos.html', {
+        'usuario_logueado': u,
+        'proyectos': proyectos,
+        'tipos_proyecto': tipos_proyecto,
+        'error': error,
+        'success': success_msg,
     })

@@ -33,6 +33,7 @@ urlpatterns = [
     path('logout/', views.logout_view, name='logout'),
     path('registro/', views.registro_view, name='registro'),
     path('usuarios/', views.usuarios_view, name='usuarios'),
+    path('proyectos/', views.proyectos_view, name='proyectos'),
     path('incidencias/', views.incidencias_view, name='incidencias'),
     path('contacto/<int:id_contacto>/destacar/<int:id_interaccion>/', views.destacar_interaccion, name='destacar_interaccion'),
     path('contacto/<int:id_contacto>/ajax-sync-correos/', views.ajax_sincronizar_correos, name='ajax_sincronizar_correos'),

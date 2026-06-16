@@ -1,4 +1,17 @@
-Contacto: Isabella Torres 
-Total interacciones: 2
-ID: 1 | Tipo: Actividad | Canal: None | Duracion: None | Temp: None | Estado: Abierta
-ID: 2 | Tipo: Reunión | Canal: Reunión | Duracion: None | Temp: None | Estado: Programada
+Contacto: Santiago Morales
+Total interacciones: 15
+ID: 5 | Tipo: Correo | Canal: Correo | Duracion: 1 | Temp: None | Estado: Finalizada
+ID: 6 | Tipo: Llamada | Canal: None | Duracion: None | Temp: None | Estado: En curso
+ID: 7 | Tipo: Correo | Canal: Correo | Duracion: 1 | Temp: None | Estado: Finalizada
+ID: 8 | Tipo: Correo | Canal: Correo | Duracion: 1 | Temp: None | Estado: Finalizada
+ID: 9 | Tipo: Correo | Canal: Correo | Duracion: 1 | Temp: None | Estado: Finalizada
+ID: 11 | Tipo: Correo | Canal: Correo | Duracion: 1 | Temp: None | Estado: Finalizada
+ID: 12 | Tipo: Correo | Canal: Correo | Duracion: 1 | Temp: None | Estado: Finalizada
+ID: 18 | Tipo: Correo | Canal: Correo | Duracion: 1 | Temp: None | Estado: Finalizada
+ID: 19 | Tipo: Correo | Canal: Correo | Duracion: 1 | Temp: None | Estado: Finalizada
+ID: 20 | Tipo: Correo | Canal: Correo | Duracion: 1 | Temp: 3 | Estado: Finalizada
+ID: 21 | Tipo: Correo | Canal: Correo | Duracion: 1 | Temp: None | Estado: Finalizada
+ID: 22 | Tipo: Correo | Canal: Correo | Duracion: 1 | Temp: None | Estado: Finalizada
+ID: 23 | Tipo: Reunión | Canal: Reunión | Duracion: None | Temp: None | Estado: Programada
+ID: 24 | Tipo: Nota | Canal: None | Duracion: None | Temp: None | Estado: Finalizada
+ID: 49 | Tipo: Correo | Canal: Correo | Duracion: 1 | Temp: None | Estado: Finalizada

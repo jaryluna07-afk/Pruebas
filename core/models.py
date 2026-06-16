@@ -44,6 +44,21 @@ class TipoInteraccion(models.Model):
     def __str__(self):
         return self.nombre_tipo
 
+class TipoProyecto(models.Model):
+    nombre_tipo = models.CharField(max_length=150, unique=True)
+    descripcion = models.TextField(blank=True, null=True)
+
+    def __str__(self):
+        return self.nombre_tipo
+
+class Proyecto(models.Model):
+    tipo_proyecto = models.ForeignKey(TipoProyecto, on_delete=models.CASCADE, related_name='proyectos')
+    nombre_proyecto = models.CharField(max_length=150)
+    descripcion = models.TextField(blank=True, null=True)
+
+    def __str__(self):
+        return self.nombre_proyecto
+
 class Contacto(models.Model):
     tipo_contacto = models.ForeignKey(TipoContacto, on_delete=models.CASCADE)
     tipo_doc = models.ForeignKey(TipoIdentificacion, on_delete=models.CASCADE)
@@ -69,8 +84,8 @@ class Contacto(models.Model):
     id_rep_legal = models.CharField(max_length=25, blank=True, null=True)
     
     # Nuevos atributos de Proyecto
-    tipo_proyecto = models.CharField(max_length=150, blank=True, null=True)
-    proyecto_nombre = models.CharField(max_length=150, blank=True, null=True)
+    tipo_proyecto = models.ForeignKey(TipoProyecto, on_delete=models.SET_NULL, null=True, blank=True)
+    proyecto_nombre = models.ForeignKey(Proyecto, on_delete=models.SET_NULL, null=True, blank=True)
     torre = models.CharField(max_length=50, blank=True, null=True)
     apartamento = models.CharField(max_length=50, blank=True, null=True)
     tipo_contrato = models.CharField(max_length=50, blank=True, null=True)

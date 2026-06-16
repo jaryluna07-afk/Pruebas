@@ -1,0 +1,499 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Proyectos - Constructora Dyco</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #F4F7FE;
+            --pri: #a82e2e;
+            --sec: #4318FF;
+            --ok: #01B574;
+            --warn: #e11d48;
+            --txt: #1B2559;
+            --txt2: #A3AED0;
+            --white: #FFF;
+            --shadow: 0 20px 50px rgba(0,0,0,.05);
+            --ease: all .4s cubic-bezier(.175,.885,.32,1.275);
+            --gris-borde: #E9EDF7;
+        }
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Outfit', sans-serif; background: var(--bg); color: var(--txt); min-height: 100vh; overflow-x: hidden; }
+        
+        /* SIDEBAR */
+        .sidebar { position: fixed; top: 0; left: 0; height: 100vh; width: 90px; background: #151B2B; border-right: none; display: flex; flex-direction: column; z-index: 1000; transition: var(--ease); padding-bottom: 30px; overflow: hidden; align-items: center; }
+        .sidebar:hover { width: 290px; align-items: stretch; }
+        .sb-head { padding: 40px 0; display: flex; align-items: center; justify-content: center; gap: 12px; width: 100%; transition: .3s; }
+        .sidebar:hover .sb-head { padding: 40px 25px; justify-content: flex-start; }
+        .logo { min-width: 48px; height: 48px; background: #a82e2e; color: #fff; display: flex; align-items: center; justify-content: center; border-radius: 14px; font-weight: 800; font-size: 24px; }
+        .logo-t { font-weight: 800; font-size: 22px; color: #ffffff; opacity: 0; transition: .3s; white-space: nowrap; display: none; margin-left: 5px; }
+        .sidebar:hover .logo-t { opacity: 1; display: block; }
+        
+        .nav { flex: 1; width: 100%; padding: 0 15px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+        .sidebar:hover .nav { align-items: stretch; padding: 0 20px; }
+        .nav-link { display: flex; align-items: center; justify-content: center; width: 56px; min-height: 56px; text-decoration: none; color: #8F9BBA; border-radius: 16px; transition: .3s; font-weight: 700; font-size: 14px; white-space: nowrap; position: relative; }
+        .sidebar:hover .nav-link { width: 100%; justify-content: flex-start; padding: 16px 22px; border-radius: 20px; gap: 18px; }
+        .nav-link:hover { background: rgba(255,255,255,0.05); color: #ffffff; }
+        .nav-link.active { background: rgba(168, 46, 46, 0.15); color: #ffffff!important; border-left: 4px solid #a82e2e; border-radius: 14px; }
+        .nav-link.active svg { stroke: #ffffff; }
+        .nav-txt { opacity: 0; transition: .3s; display: none; }
+        .sidebar:hover .nav-txt { opacity: 1; display: block; }
+        
+        .wrapper { margin-left: 90px; padding: 25px; transition: var(--ease); width: calc(100% - 90px); }
+        
+        /* CARD */
+        .card { background: var(--white); border-radius: 20px; padding: 25px 30px; box-shadow: var(--shadow); margin-bottom: 20px; border: 1.5px solid var(--gris-borde); }
+        .card h2 { font-size: 17px; font-weight: 800; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
+        
+        .btn-pri { background: var(--pri); color: #fff; border: none; padding: 12px 24px; border-radius: 12px; font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 15px; cursor: pointer; transition: .3s; box-shadow: 0 5px 15px rgba(168, 46, 46, 0.2); display: inline-flex; align-items: center; gap: 8px; }
+        .btn-pri:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(168, 46, 46, 0.3); background-color: #8c2424; }
+        .btn-sec { background: #F4F7FE; color: var(--txt); border: none; padding: 12px 24px; border-radius: 12px; font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 15px; cursor: pointer; transition: .3s; }
+        .btn-sec:hover { background: #E9EDF7; }
+        
+        /* FORM */
+        .fg { margin-bottom: 16px; }
+        .fg label { display: block; margin-bottom: 7px; font-weight: 700; font-size: 13px; color: var(--txt); }
+        .fc { width: 100%; padding: 12px 15px; border: 2px solid #E9EDF7; border-radius: 12px; font-family: 'Outfit', sans-serif; font-size: 15px; color: var(--txt); outline: none; background: #FAFCFF; transition: .3s; }
+        .fc:focus { border-color: var(--pri); background: #fff; }
+        
+        /* TABLE */
+        .table-wrap { overflow-x: auto; width: 100%; }
+        table { width: 100%; border-collapse: separate; border-spacing: 0; }
+        th { text-align: left; padding: 14px 18px; color: var(--txt2); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .5px; border-bottom: 2px solid #F4F7FE; }
+        td { padding: 16px 18px; border-bottom: 1px solid #F4F7FE; font-size: 14px; font-weight: 500; vertical-align: middle; }
+        tr:last-child td { border-bottom: none; }
+        tr:hover td { background: #FAFCFF; }
+        
+        .badge-type { background: #EEF2FF; color: #4318FF; padding: 5px 10px; border-radius: 8px; font-size: 12px; font-weight: 800; text-transform: uppercase; }
+        
+        .btn-icon { width: 32px; height: 32px; border-radius: 8px; border: none; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; transition: .3s; background: #F4F7FE; color: #475467; }
+        .btn-icon:hover { background: var(--pri); color: #fff; }
+        
+        /* TOAST */
+        .toast { position: fixed; bottom: 30px; right: 30px; padding: 16px 25px; border-radius: 14px; color: #fff; font-weight: 700; font-size: 14px; z-index: 3000; display: none; align-items: center; gap: 10px; box-shadow: 0 10px 30px rgba(0,0,0,.2); }
+        .toast.show { display: flex; animation: toastIn .4s ease; }
+        .toast.success { background: #01B574; }
+        .toast.error { background: #D32F2F; }
+        @keyframes toastIn { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        
+        /* DARK MODE */
+        [data-theme="dark"] {
+            --bg: #0f172a;
+            --texto: #f8fafc;
+            --texto-secundario: #cbd5e1;
+            --white: #1e293b;
+            --shadow: 0 4px 20px rgba(0,0,0,0.4);
+            --gris-borde: #334155;
+            --txt: #f8fafc;
+            --txt2: #cbd5e1;
+        }
+        [data-theme="dark"] body { background: var(--bg); color: var(--txt); }
+        [data-theme="dark"] .card { background: var(--white); border-color: var(--gris-borde); }
+        [data-theme="dark"] .fc { background: #0f172a; border-color: #334155; color: #f8fafc; }
+        [data-theme="dark"] .fc:focus { background: #1e293b; border-color: var(--pri); }
+        [data-theme="dark"] tr:hover td { background: #1e293b; }
+        [data-theme="dark"] td, [data-theme="dark"] th { border-bottom-color: #334155; }
+        [data-theme="dark"] .btn-icon { background: #0f172a; color: #cbd5e1; }
+        [data-theme="dark"] .btn-sec { background: #0f172a; color: #cbd5e1; }
+        [data-theme="dark"] .btn-sec:hover { background: #1e293b; }
+
+        @media (max-width: 768px) {
+            .sidebar { width: 280px !important; position: fixed !important; left: -280px !important; height: 100vh !important; transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), left 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important; z-index: 10000 !important; }
+            .sidebar.activo { left: 0 !important; box-shadow: 15px 0 50px rgba(0,0,0,0.15) !important; }
+            .sidebar.activo .logo-t, .sidebar.activo .nav-txt { display: block !important; opacity: 1 !important; }
+            .sidebar:hover { width: 280px !important; }
+            .sidebar:hover .logo-t, .sidebar:hover .nav-txt { display: block !important; opacity: 1 !important; }
+            .nav-link { width: 100% !important; justify-content: flex-start !important; padding: 16px 22px !important; border-radius: 20px !important; gap: 18px !important; }
+            .wrapper { margin-left: 0 !important; width: 100% !important; padding: 16px !important; }
+            
+            /* Mobile Header */
+            .mobile-header { display: flex !important; align-items: center; justify-content: space-between; padding: 12px 16px; background: white; border-radius: 16px; border: 1px solid var(--gris-borde); margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
+            [data-theme="dark"] .mobile-header { background: var(--white); }
+            .desktop-header { display: none !important; }
+            .hamburger-btn { display: flex; align-items: center; justify-content: center; background: white; border: 1px solid #e2e8f0; border-radius: 12px; width: 44px; height: 44px; color: #1e293b; cursor: pointer; z-index: 1001; }
+            [data-theme="dark"] .hamburger-btn { background: var(--white); border-color: #334155; color: #f8fafc; }
+            .sidebar-overlay { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(4px); z-index: 9999; }
+            .sidebar-overlay.activo { display: block; }
+        }
+
+        /* MODAL */
+        .modal { display:none; position:fixed; z-index:2000; inset:0; background:rgba(27,37,89,.5); backdrop-filter:blur(5px); justify-content:center; align-items:center; }
+        .modal.open { display:flex; }
+        .modal-box { background:#fff; padding:0; border-radius:20px; width:90%; max-width:560px; box-shadow:0 25px 50px rgba(0,0,0,.12); animation:slideUp .4s ease; }
+        .modal-h { padding:22px 28px; border-bottom:1px solid #F4F7FE; display:flex; justify-content:space-between; align-items:center; }
+        .modal-h h3 { font-size:19px; font-weight:800; }
+        .modal-close { color:var(--txt2); font-size:26px; cursor:pointer; background:none; border:none; line-height:1; }
+        .modal-close:hover { color:var(--pri); }
+        .modal-b { padding:28px; }
+        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+        [data-theme="dark"] .modal-box { background: var(--white); }
+        [data-theme="dark"] .modal-h { border-bottom-color: var(--gris-borde); }
+    </style>
+    <script>
+        const savedTheme = localStorage.getItem('temaApp') || 'Modo Sistema';
+        if (savedTheme === 'Modo Oscuro' || (savedTheme === 'Modo Sistema' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.setAttribute('data-theme', 'dark');
+        }
+    </script>
+</head>
+<body>
+    <!-- BARRA LATERAL -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sb-head">
+            <img src="{% static 'img/logo_dyco.png' %}" alt="Logo DYCO" style="width: 48px; height: 48px; object-fit: contain; border-radius: 12px; background: white; padding: 4px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
+            <div class="logo-t">CONSTRUCTORA</div>
+        </div>
+
+        <nav class="nav">
+            <a href="{% url 'dashboard' %}" class="nav-link">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                <span class="nav-txt">Inicio</span>
+            </a>
+            <a href="{% url 'contactos' %}" class="nav-link">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+                <span class="nav-txt">Registro de Contacto</span>
+            </a>
+            <a href="{% url 'interacciones' %}" class="nav-link">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                <span class="nav-txt">Interacciones</span>
+            </a>
+            {% if usuario_logueado.rol.nombre_rol == "Administrador" %}
+            <a href="{% url 'usuarios' %}" class="nav-link">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                <span class="nav-txt">Gestión de Usuarios</span>
+            </a>
+            <a href="{% url 'proyectos' %}" class="nav-link active">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+                <span class="nav-txt">Gestión de Proyectos</span>
+            </a>
+            {% endif %}
+            <a href="{% url 'incidencias' %}" class="nav-link">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                <span class="nav-txt">Incidencias</span>
+            </a>
+        </nav>
+        
+        <!-- CONFIGURACIONES -->
+        {% include 'configuraciones.html' %}
+    </aside>
+
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+    <div class="wrapper">
+        <!-- MOBILE HEADER -->
+        <div class="mobile-header" style="display: none;">
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <button class="hamburger-btn" onclick="toggleSidebar()">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#a82e2e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="3" y1="12" x2="21" y2="12"></line>
+                        <line x1="3" y1="6" x2="21" y2="6"></line>
+                        <line x1="3" y1="18" x2="21" y2="18"></line>
+                    </svg>
+                </button>
+                <h1 style="font-size: 20px; font-weight: 800; color: #1e293b; margin: 0;">Proyectos</h1>
+            </div>
+        </div>
+
+        <!-- HEADER DESKTOP -->
+        <header class="desktop-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:30px">
+            <div>
+                <h1 style="font-size:26px; font-weight:800; letter-spacing:-.5px">Gestión de Proyectos</h1>
+                <p style="color:var(--txt2); font-weight:500; margin-top:2px">Administración de tipos de proyecto y conjuntos (proyectos)</p>
+            </div>
+        </header>
+
+        {% if error %}
+        <div class="toast error show" style="display:flex;">
+            <span>⚠️ {{ error }}</span>
+        </div>
+        {% endif %}
+        {% if success %}
+        <div class="toast success show" style="display:flex;">
+            <span>✅ {{ success }}</span>
+        </div>
+        {% endif %}
+
+        <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 20px; align-items: start;" id="mainGrid">
+            <!-- COLUMNA IZQUIERDA: FORMULARIOS -->
+            <div style="display: flex; flex-direction: column; gap: 20px;">
+                <!-- AGREGAR TIPO DE PROYECTO -->
+                <div class="card" style="margin-bottom: 0;">
+                    <h2>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#a82e2e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                        Nuevo Tipo de Proyecto
+                    </h2>
+                    <form method="POST">
+                        {% csrf_token %}
+                        <input type="hidden" name="accion" value="crear_tipo_proyecto">
+                        
+                        <div class="fg">
+                            <label>Nombre del Tipo / Categoría</label>
+                            <input type="text" name="nombre_tipo" class="fc" placeholder="Ej: Lote, Bodega, Oficina..." required>
+                        </div>
+                        
+                        <div class="fg">
+                            <label>Descripción del Tipo</label>
+                            <textarea name="descripcion" class="fc" rows="2" placeholder="Ej: Espacios comerciales o industriales destinados a..."></textarea>
+                        </div>
+                        
+                        <button type="submit" class="btn-pri" style="width: 100%;">Crear Tipo de Proyecto</button>
+                    </form>
+                </div>
+
+                <!-- AGREGAR PROYECTO -->
+                <div class="card" style="margin-bottom: 0;">
+                    <h2>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#a82e2e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+                        Nuevo Proyecto / Conjunto
+                    </h2>
+                    <form method="POST">
+                        {% csrf_token %}
+                        <input type="hidden" name="accion" value="crear_proyecto">
+                        
+                        <div class="fg">
+                            <label>Tipo de Proyecto / Servicio</label>
+                            <select name="tipo_proyecto" class="fc" required>
+                                <option value="">Selecciona el tipo</option>
+                                {% for tp in tipos_proyecto %}
+                                <option value="{{ tp.id }}">{{ tp.nombre_tipo }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="fg">
+                            <label>Nombre del Conjunto / Proyecto</label>
+                            <input type="text" name="nombre_proyecto" class="fc" placeholder="Ej: Mirador del Bosque (Ibagué)" required>
+                        </div>
+                        
+                        <div class="fg">
+                            <label>Breve Descripción</label>
+                            <textarea name="descripcion" class="fc" rows="3" placeholder="Ej: Proyecto residencial de apartamentos con áreas sociales premium y parqueaderos privados..."></textarea>
+                        </div>
+                        
+                        <button type="submit" class="btn-pri" style="width: 100%;">Agregar Proyecto</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- COLUMNA DERECHA: TABLAS -->
+            <div style="display: flex; flex-direction: column; gap: 20px;">
+                <!-- TABLA PROYECTOS -->
+                <div class="card" style="margin-bottom: 0;">
+                    <h2>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4318FF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+                        Proyectos Activos
+                    </h2>
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Conjunto / Proyecto</th>
+                                    <th>Tipo de Proyecto</th>
+                                    <th>Descripción</th>
+                                    <th style="text-align: center;">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for p in proyectos %}
+                                <tr>
+                                    <td style="font-weight: 700; color: var(--pri);">{{ p.nombre_proyecto }}</td>
+                                    <td><span class="badge-type">{{ p.tipo_proyecto.nombre_tipo }}</span></td>
+                                    <td style="font-size: 13px; color: var(--txt2); max-width: 300px; word-break: break-word;">{{ p.descripcion|default:"Sin descripción" }}</td>
+                                    <td style="text-align: center;">
+                                        <div style="display: flex; gap: 6px; justify-content: center; align-items: center;">
+                                            <button type="button" class="btn-icon" title="Editar" onclick="abrirEditarProyecto({{ p.id }}, '{{ p.nombre_proyecto|escapejs }}', '{{ p.tipo_proyecto_id }}', '{{ p.descripcion|default:''|escapejs }}')">
+                                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                            </button>
+                                            <form method="POST" style="display: inline; margin: 0;" onsubmit="return confirm('¿Estás seguro de que deseas eliminar este proyecto?')">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="accion" value="eliminar_proyecto">
+                                                <input type="hidden" name="proyecto_id" value="{{ p.id }}">
+                                                <button class="btn-icon" title="Eliminar" style="color: var(--warn);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="4" style="text-align: center; color: var(--txt2); padding: 40px;">No hay proyectos registrados en la base de datos.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- TABLA TIPOS DE PROYECTO -->
+                <div class="card" style="margin-bottom: 0;">
+                    <h2>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#01B574" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                        Tipos de Proyecto y Servicios
+                    </h2>
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Nombre del Tipo</th>
+                                    <th>Descripción</th>
+                                    <th style="text-align: center;">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for tp in tipos_proyecto %}
+                                <tr>
+                                    <td style="font-weight: 700; color: #4318FF;">{{ tp.nombre_tipo }}</td>
+                                    <td style="font-size: 13px; color: var(--txt2); max-width: 300px; word-break: break-word;">{{ tp.descripcion|default:"Sin descripción" }}</td>
+                                    <td style="text-align: center;">
+                                        <div style="display: flex; gap: 6px; justify-content: center; align-items: center;">
+                                            <button type="button" class="btn-icon" title="Editar" onclick="abrirEditarTipo({{ tp.id }}, '{{ tp.nombre_tipo|escapejs }}', '{{ tp.descripcion|default:''|escapejs }}')">
+                                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                            </button>
+                                            <form method="POST" style="display: inline; margin: 0;" onsubmit="return confirm('¿Estás seguro de que deseas eliminar este tipo de proyecto? Se eliminarán todos los proyectos asociados a este tipo.')">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="accion" value="eliminar_tipo_proyecto">
+                                                <input type="hidden" name="tipo_id" value="{{ tp.id }}">
+                                                <button class="btn-icon" title="Eliminar" style="color: var(--warn);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="3" style="text-align: center; color: var(--txt2); padding: 40px;">No hay tipos de proyecto registrados.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL EDITAR PROYECTO -->
+    <div class="modal" id="modalEditarProyecto">
+        <div class="modal-box">
+            <div class="modal-h">
+                <h3>Editar Proyecto / Conjunto</h3>
+                <button class="modal-close" onclick="closeModal('modalEditarProyecto')">&times;</button>
+            </div>
+            <div class="modal-b">
+                <form method="POST">
+                    {% csrf_token %}
+                    <input type="hidden" name="accion" value="modificar_proyecto">
+                    <input type="hidden" name="proyecto_id" id="editProyectoId">
+                    
+                    <div class="fg">
+                        <label>Tipo de Proyecto / Servicio</label>
+                        <select name="tipo_proyecto" id="editProyectoTipo" class="fc" required>
+                            {% for tp in tipos_proyecto %}
+                            <option value="{{ tp.id }}">{{ tp.nombre_tipo }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="fg">
+                        <label>Nombre del Conjunto / Proyecto</label>
+                        <input type="text" name="nombre_proyecto" id="editProyectoNombre" class="fc" required>
+                    </div>
+                    
+                    <div class="fg">
+                        <label>Breve Descripción</label>
+                        <textarea name="descripcion" id="editProyectoDescripcion" class="fc" rows="3"></textarea>
+                    </div>
+                    
+                    <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                        <button type="button" class="btn-sec" onclick="closeModal('modalEditarProyecto')">Cancelar</button>
+                        <button type="submit" class="btn-pri">Guardar Cambios</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL EDITAR TIPO DE PROYECTO -->
+    <div class="modal" id="modalEditarTipo">
+        <div class="modal-box">
+            <div class="modal-h">
+                <h3>Editar Tipo de Proyecto</h3>
+                <button class="modal-close" onclick="closeModal('modalEditarTipo')">&times;</button>
+            </div>
+            <div class="modal-b">
+                <form method="POST">
+                    {% csrf_token %}
+                    <input type="hidden" name="accion" value="modificar_tipo_proyecto">
+                    <input type="hidden" name="tipo_id" id="editTipoId">
+                    
+                    <div class="fg">
+                        <label>Nombre del Tipo / Categoría</label>
+                        <input type="text" name="nombre_tipo" id="editTipoNombre" class="fc" required>
+                    </div>
+                    
+                    <div class="fg">
+                        <label>Descripción del Tipo</label>
+                        <textarea name="descripcion" id="editTipoDescripcion" class="fc" rows="3"></textarea>
+                    </div>
+                    
+                    <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                        <button type="button" class="btn-sec" onclick="closeModal('modalEditarTipo')">Cancelar</button>
+                        <button type="submit" class="btn-pri">Guardar Cambios</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            sidebar.classList.toggle('activo');
+            overlay.classList.toggle('activo');
+        }
+
+        // Desvanecer alertas automáticamente después de 4 segundos
+        setTimeout(() => {
+            const toasts = document.querySelectorAll('.toast');
+            toasts.forEach(t => {
+                t.style.transition = 'opacity 0.5s ease';
+                t.style.opacity = '0';
+                setTimeout(() => t.remove(), 500);
+            });
+        }, 400);
+
+        function openModal(id) {
+            document.getElementById(id).classList.add('open');
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('open');
+        }
+
+        window.addEventListener('click', e => {
+            if (e.target.classList.contains('modal')) {
+                e.target.classList.remove('open');
+            }
+        });
+
+        function abrirEditarProyecto(id, nombre, tipoId, descripcion) {
+            document.getElementById('editProyectoId').value = id;
+            document.getElementById('editProyectoNombre').value = nombre;
+            document.getElementById('editProyectoTipo').value = tipoId;
+            document.getElementById('editProyectoDescripcion').value = descripcion;
+            openModal('modalEditarProyecto');
+        }
+
+        function abrirEditarTipo(id, nombre, descripcion) {
+            document.getElementById('editTipoId').value = id;
+            document.getElementById('editTipoNombre').value = nombre;
+            document.getElementById('editTipoDescripcion').value = descripcion;
+            openModal('modalEditarTipo');
+        }
+    </script>
+</body>
+</html>

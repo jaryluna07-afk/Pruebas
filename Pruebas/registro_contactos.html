@@ -8,11 +8,9 @@
         <label>Tipo de Proyecto / Servicio</label>
         <select name="tipo_proyecto" id="tipoProyectoSelect" class="entrada-texto" onchange="mostrarCamposProyecto()">
             <option value="">Selecciona el tipo de proyecto</option>
-            <option value="Construcción desde cero en terreno propio">Construcción desde cero en terreno propio</option>
-            <option value="Diseño y construcción de casas personalizadas">Diseño y construcción de casas personalizadas</option>
-            <option value="Trámites legales y licencias">Trámites legales y licencias</option>
-            <option value="Adecuaciones o remodelaciones">Adecuaciones o remodelaciones</option>
-            <option value="Apartamento">Apartamento</option>
+            {% for tp in tipos_proyecto %}
+            <option value="{{ tp.id }}">{{ tp.nombre_tipo }}</option>
+            {% endfor %}
         </select>
     </div>
 
@@ -22,7 +20,9 @@
             <select name="proyecto_nombre" id="proyectoSelect" class="entrada-texto">
                 <option value="">Selecciona un conjunto</option>
                 {% for p in proyectos %}
-                <option value="{{ p.nombre_proyecto }}">{{ p.nombre_proyecto }}</option>
+                {% if p.tipo_proyecto.nombre_tipo == "Apartamento" %}
+                <option value="{{ p.id }}">{{ p.nombre_proyecto }}</option>
+                {% endif %}
                 {% endfor %}
             </select>
         </div>
@@ -92,7 +92,7 @@
     function mostrarCamposProyecto() {
         var sel = document.getElementById("tipoProyectoSelect");
         var campos = document.getElementById("camposApartamento");
-        if (sel && sel.value === "Apartamento") {
+        if (sel && sel.selectedIndex >= 0 && sel.options[sel.selectedIndex].text === "Apartamento") {
             campos.style.display = "block";
         } else {
             campos.style.display = "none";

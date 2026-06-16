@@ -380,6 +380,10 @@
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                 <span class="nav-text">Gestión de Usuarios</span>
             </a>
+            <a href="{% url 'proyectos' %}" class="nav-enlace">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+                <span class="nav-text">Gestión de Proyectos</span>
+            </a>
             {% endif %}
             <a href="{% url 'incidencias' %}" class="nav-enlace">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
@@ -527,21 +531,21 @@
                         <label>Tipo de Proyecto / Servicio</label>
                         <select name="tipo_proyecto" id="tipoProyectoSelectEdit" class="entrada-texto" onchange="mostrarCamposProyectoEdit()">
                             <option value="">Selecciona el tipo de proyecto</option>
-                            <option value="Construcción desde cero en terreno propio" {% if c.tipo_proyecto == "Construcción desde cero en terreno propio" %}selected{% endif %}>Construcción desde cero en terreno propio</option>
-                            <option value="Diseño y construcción de casas personalizadas" {% if c.tipo_proyecto == "Diseño y construcción de casas personalizadas" %}selected{% endif %}>Diseño y construcción de casas personalizadas</option>
-                            <option value="Trámites legales y licencias" {% if c.tipo_proyecto == "Trámites legales y licencias" %}selected{% endif %}>Trámites legales y licencias</option>
-                            <option value="Adecuaciones o remodelaciones" {% if c.tipo_proyecto == "Adecuaciones o remodelaciones" %}selected{% endif %}>Adecuaciones o remodelaciones</option>
-                            <option value="Apartamento" {% if c.tipo_proyecto == "Apartamento" %}selected{% endif %}>Apartamento</option>
+                            {% for tp in tipos_proyecto %}
+                            <option value="{{ tp.id }}" {% if c.tipo_proyecto_id == tp.id %}selected{% endif %}>{{ tp.nombre_tipo }}</option>
+                            {% endfor %}
                         </select>
                     </div>
 
-                    <div id="camposApartamentoEdit" style="display:{% if c.tipo_proyecto == 'Apartamento' %}block{% else %}none{% endif %}; margin-top: 12px; padding: 15px; border: 1px dashed var(--gris-borde); border-radius: 8px;">
+                    <div id="camposApartamentoEdit" style="display:{% if c.tipo_proyecto.nombre_tipo == 'Apartamento' %}block{% else %}none{% endif %}; margin-top: 12px; padding: 15px; border: 1px dashed var(--gris-borde); border-radius: 8px;">
                         <div class="grupo-campo">
                             <label>Conjunto / Proyecto</label>
                             <select name="proyecto_nombre" class="entrada-texto">
                                 <option value="">Selecciona un conjunto</option>
                                 {% for p in proyectos %}
-                                <option value="{{ p.nombre_proyecto }}" {% if c.proyecto_nombre == p.nombre_proyecto %}selected{% endif %}>{{ p.nombre_proyecto }}</option>
+                                {% if p.tipo_proyecto.nombre_tipo == "Apartamento" %}
+                                <option value="{{ p.id }}" {% if c.proyecto_nombre_id == p.id %}selected{% endif %}>{{ p.nombre_proyecto }}</option>
+                                {% endif %}
                                 {% endfor %}
                             </select>
                         </div>
@@ -637,7 +641,7 @@
         function mostrarCamposProyectoEdit() {
             var sel = document.getElementById("tipoProyectoSelectEdit");
             var campos = document.getElementById("camposApartamentoEdit");
-            if (sel && sel.value === "Apartamento") {
+            if (sel && sel.selectedIndex >= 0 && sel.options[sel.selectedIndex].text === "Apartamento") {
                 campos.style.display = "block";
             } else {
                 campos.style.display = "none";
